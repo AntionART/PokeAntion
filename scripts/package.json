@@ -1,0 +1,10 @@
+{
+  "name": "pokemon-online-smoke",
+  "version": "1.0.0",
+  "description": "Smoke tests for pokemon-online server (WebSocket + HTTP)",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "ws": "^8.13.0"
+  }
+}

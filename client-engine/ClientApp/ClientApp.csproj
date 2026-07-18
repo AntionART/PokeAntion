@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <PackageReference Include="Vortice.DXGI" Version="3.8.3" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
+    <!-- Para rasterizar el atlas de fuente (texto de la UI: chat, nombres, etc.) con GDI+
+         en un Bitmap en memoria — no para capturar pantalla, eso es lo que falla en RDP. -->
+    <PackageReference Include="System.Drawing.Common" Version="10.0.10" />
+    <!-- Captura/reproducción de audio real para el chat de voz. -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LibretroCore\LibretroCore.csproj" />
+    <ProjectReference Include="..\RomLoader\RomLoader.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reutiliza el mismo archivo que consumiría un cliente Godot: única fuente de verdad
+         del protocolo en C#, no una copia que se puede desincronizar. -->
+    <Compile Include="..\..\client-stub\Protocol\Messages.cs" Link="Protocol\Messages.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,31 @@
+{
+  "rom_id": "emerald_us",
+  "display_name": "Pokémon Emerald (USA, Europe)",
+  "rom_path": "Pokemon - Emerald Version (USA, Europe).gba",
+  "rom_game_code": "BPEE",
+  "rom_checksum_md5": "605B89B67018ABCEA91E693A4DD25BE",
+  "rom_checksum_sha1": "F3AE088181BF583E55DAF962A92BB46F4F1D07B7",
+  "_comment": "Fase RomLoader-6 (2026-07-18): reescrito desde cero para seguir el esquema real de MemoryMapConfig (el archivo anterior era ilustrativo, con campos que el adaptador ni siquiera deserializa). Direcciones en proceso de validación empírica, misma metodología que emerald_es.json — ver player._validation cuando estén confirmadas.",
+
+  "player": {
+    "pos_x_address": "0x02025A7C",
+    "pos_y_address": "0x02025A7E",
+    "pos_format": "u16 little-endian, coordenada de tile (no píxel)",
+    "_validation": "Confirmado con tres pruebas de movimiento controlado independientes desde el dormitorio inicial (F3 -> dumps/savestate_emerald_us.bin): (1) 2 pasos a la izquierda -> x 2->1 (nota: el segundo paso quedó bloqueado por un mueble, el delta real fue -1, confirmado leyendo el byte tras cada paso en vez de asumir la distancia); (2) 1 paso a la derecha (retrocediendo) -> x volvió exacto a 2, y sin cambios; (3) 1 paso arriba -> y 2->1, x sin cambios. Mismo desplazamiento relativo (+2 bytes entre x e y) que emerald_es.json, pero dirección ABSOLUTA distinta (0x02025A7C, no 0x02025A30) — confirma que son ROMs con builds distintos, tal como se esperaba.",
+    "map_number_address": "0x02020701",
+    "_map_number_validation": "VALIDADO CON MENOS RIGOR que emerald_es.json — documentado honestamente. Se confirmó: (1) exterior (afuera de la casa, escena del camión de mudanza) = 40, idéntico byte a byte al valor exterior de emerald_es.json en la MISMA dirección absoluta (0x02020701) — coincidencia fuerte entre dos ROMs compiladas por separado, sugiere layout de sección de datos casi idéntico entre versiones US/EU y ES de Emerald; (2) interior (living room de la casa) = 168, estable y reproducible en dos lecturas independientes de la misma sala. NO SE PROBÓ una segunda sala DISTINTA para descartar falsos positivos (el mueble/mamá bloqueaban el paso hacia otro edificio y no se insistió más por costo de tiempo) — a diferencia de emerald_es.json, que sí tiene esa segunda confirmación. Tratar como confiable pero con un escalón menos de evidencia; si en el futuro se nota mala detección de mapa con esta ROM, este es el primer lugar a revisar.",
+    "sprite": {
+      "width_px": 16,
+      "height_px": 32,
+      "palette_index": 0,
+      "expected_center_x": 112,
+      "expected_center_y": 64,
+      "_comment": "Validado con F6 (--dump-sprites) en vivo contra el dormitorio inicial: el jugador aparece como idx=3 x=112 y=56 16x32 tile=0 pal=0 — misma convención PALSLOT_PLAYER exacta que emerald_es.json (esperable: mismo código fuente pokeemerald, solo cambia el texto entre localizaciones, no la lógica de sprites/cámara). Mismos valores que emerald_es.json a propósito, no copiados sin verificar."
+    }
+  },
+
+  "notes": [
+    "Este archivo es el único lugar del proyecto que conoce direcciones de memoria específicas de esta ROM (BPEE, US/EU).",
+    "emerald_es.json (BPES, español) es una ROM DISTINTA con build distinto: sus direcciones NO son intercambiables con las de este archivo, incluso para el mismo campo lógico — es exactamente el caso que la Fase RomLoader-6 busca probar (agregar esta ROM sin tocar RomLoader/Program.cs)."
+  ]
+}
