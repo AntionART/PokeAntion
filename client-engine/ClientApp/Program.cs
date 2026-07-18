@@ -147,6 +147,22 @@ if (devBoot)
             return 1;
         }
 
+        // --load-sav <path>: carga un .sav real (SRAM de guardado en batería, formato estándar
+        // de cualquier emulador/flashcart) en vez de un savestate del emulador — permite arrancar
+        // directo en una partida ya avanzada (Pokédex recibida, equipo con varios Pokémon, etc.)
+        // sin rejugar la intro. A diferencia de --load-state, no depende de la build del core.
+        string? loadSavPath = GetOpt(args, "--load-sav");
+        if (loadSavPath != null)
+        {
+            if (!File.Exists(loadSavPath))
+            {
+                Console.Error.WriteLine($"No existe el .sav: {loadSavPath}");
+                return 1;
+            }
+            realCore.LoadSaveRam(File.ReadAllBytes(loadSavPath));
+            Console.WriteLine($".sav cargado desde {loadSavPath}");
+        }
+
         // --load-state <path>: retoma una partida guardada con F3 en una corrida anterior, para no
         // tener que rejugar la intro cada vez que se reinicia el cliente durante el desarrollo.
         string? loadStatePath = GetOpt(args, "--load-state");
