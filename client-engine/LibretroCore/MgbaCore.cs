@@ -178,6 +178,35 @@ public sealed class MgbaCore : IDisposable
         }
     }
 
+    /// <summary>
+    /// Escribe un archivo .sav (SRAM/flash de guardado en batería del cartucho, no un savestate
+    /// del emulador) en el buffer de save-RAM que el core ya reservó al cargar el juego. A
+    /// diferencia de LoadState (foto exacta del emulador, atada a la build del core), un .sav es
+    /// el formato real que usa cualquier emulador/flashcart — permite arrancar una ROM ya en un
+    /// punto avanzado de la partida sin tener que rejugar la intro. Debe llamarse después de
+    /// LoadRom y antes del primer RunFrame.
+    /// </summary>
+    public unsafe void LoadSaveRam(byte[] data)
+    {
+        IntPtr ptr = Libretro.retro_get_memory_data(Libretro.RETRO_MEMORY_SAVE_RAM);
+        nuint size = Libretro.retro_get_memory_size(Libretro.RETRO_MEMORY_SAVE_RAM);
+        if (ptr == IntPtr.Zero || size == 0)
+            throw new InvalidOperationException("El core no expone save RAM (¿se llamó antes de cargar la ROM?).");
+        if ((nuint)data.Length > size)
+            throw new ArgumentException($".sav de {data.Length} bytes no entra en el buffer de save RAM del core ({size} bytes).");
+        var dest = new Span<byte>((void*)ptr, (int)size);
+        dest.Clear();
+        data.AsSpan().CopyTo(dest);
+    }
+
+    public unsafe byte[] GetSaveRam()
+    {
+        IntPtr ptr = Libretro.retro_get_memory_data(Libretro.RETRO_MEMORY_SAVE_RAM);
+        nuint size = Libretro.retro_get_memory_size(Libretro.RETRO_MEMORY_SAVE_RAM);
+        if (ptr == IntPtr.Zero || size == 0) return [];
+        return new ReadOnlySpan<byte>((void*)ptr, (int)size).ToArray();
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
