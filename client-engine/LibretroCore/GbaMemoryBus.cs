@@ -54,5 +54,41 @@ public sealed class GbaMemoryBus
         return span.ToArray();
     }
 
+    public unsafe void WriteU8(uint address, byte value)
+    {
+        var region = FindRegion(address) ?? throw new ArgumentOutOfRangeException(nameof(address), $"0x{address:X8} no está en ninguna región de memoria anunciada por el core.");
+        ((byte*)region.Ptr)[address - region.Start] = value;
+    }
+
+    public unsafe void WriteU16(uint address, ushort value)
+    {
+        var region = FindRegion(address) ?? throw new ArgumentOutOfRangeException(nameof(address), $"0x{address:X8} no está en ninguna región de memoria anunciada por el core.");
+        byte* p = (byte*)region.Ptr + (address - region.Start);
+        p[0] = (byte)(value & 0xFF);
+        p[1] = (byte)(value >> 8);
+    }
+
+    public unsafe void WriteU32(uint address, uint value)
+    {
+        var region = FindRegion(address) ?? throw new ArgumentOutOfRangeException(nameof(address), $"0x{address:X8} no está en ninguna región de memoria anunciada por el core.");
+        byte* p = (byte*)region.Ptr + (address - region.Start);
+        p[0] = (byte)(value & 0xFF);
+        p[1] = (byte)((value >> 8) & 0xFF);
+        p[2] = (byte)((value >> 16) & 0xFF);
+        p[3] = (byte)(value >> 24);
+    }
+
+    /// <summary>Escribe `bytes` a partir de `address`. Igual que <see cref="ReadBytes"/>, falla
+    /// si el rango no cae completo dentro de UNA sola región anunciada.</summary>
+    public unsafe void WriteBytes(uint address, ReadOnlySpan<byte> bytes)
+    {
+        var region = FindRegion(address) ?? throw new ArgumentOutOfRangeException(nameof(address), $"0x{address:X8} no está en ninguna región de memoria anunciada por el core.");
+        uint offset = address - (uint)region.Start;
+        if (offset + (uint)bytes.Length > (uint)region.Len)
+            throw new ArgumentOutOfRangeException(nameof(bytes), $"0x{address:X8}+{bytes.Length} se sale de la región (start=0x{region.Start:X8} len=0x{region.Len:X}).");
+        var dest = new Span<byte>((byte*)region.Ptr + offset, bytes.Length);
+        bytes.CopyTo(dest);
+    }
+
     public bool IsAvailable => _core.Regions.Count > 0;
 }
