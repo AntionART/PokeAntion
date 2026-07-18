@@ -1,0 +1,26 @@
+# Herramientas/instaladores locales (no son parte del proyecto)
+/go1.26.5/
+/go1.26.5.windows-amd64.zip
+/postgresql-16.5/
+/postgres_data/
+/postgresql.log
+
+# ROMs con copyright (Nintendo/Game Freak) - nunca subir
+*.gba
+*.gbc
+*.gb
+
+# Binarios compilados / build artifacts
+bin/
+obj/
+node_modules/
+*.exe
+*.exe~
+server/pokemon-online-server
+*.log
+
+# Editor / OS
+.vs/
+.idea/
+Thumbs.db
+.DS_Store

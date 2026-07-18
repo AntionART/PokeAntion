@@ -1,0 +1,10 @@
+# Ignore local editor and build artifacts
+.git
+.gitignore
+Dockerfile
+.dockerignore
+*.log
+*.exe
+*.out
+node_modules
+vendor

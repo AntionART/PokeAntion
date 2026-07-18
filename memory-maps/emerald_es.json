@@ -1,0 +1,43 @@
+{
+  "rom_id": "emerald_es",
+  "display_name": "Pokémon Edición Esmeralda (España)",
+  "rom_path": "Pokemon - Edicion Esmeralda (Spain).gba",
+  "rom_game_code": "BPES",
+  "rom_checksum_md5": "67B770405F7B87589E0342513B25FE9B",
+  "rom_checksum_sha1": "FE1558A3DCB0360AB558969E09B690888B846DD9",
+  "_comment": "A diferencia de emerald_us.json (placeholder), las direcciones player.pos_x_address y player.pos_y_address de este archivo fueron VALIDADAS EMPÍRICAMENTE (Fase D.3, 2026-07-15) contra la ROM real, jugando de verdad y comparando volcados de EWRAM antes/después de moverse. El resto de las direcciones (save_block, equipo, mapa) siguen siendo placeholder — heredadas de emerald_us.json sin validar todavía para esta ROM.",
+
+  "player": {
+    "pos_x_address": "0x02025A30",
+    "pos_y_address": "0x02025A32",
+    "pos_format": "u16 little-endian, coordenada de tile (no píxel)",
+    "_validation": "Confirmado con dos pruebas de movimiento controlado e independientes: (1) ~4 pasos hacia abajo -> pos_y +4, pos_x sin cambios; (2) exactamente 5 pasos a la derecha -> pos_x +5, pos_y sin cambios. Ver client-engine/README.md sección D.3 para la metodología completa (volcados de EWRAM vía la tecla F1 de ClientApp, diffeados byte a byte).",
+    "_struct_note": "Esta dirección corresponde al slot 0 de lo que en el código fuente de pokeemerald se llama gObjectEvents (arreglo de 'object events' — el jugador y los sprites que se mueven en el mapa). El slot 0 es el jugador. Hay un bloque casi idéntico 16 bytes antes (0x02025A20) que probablemente sean las coordenadas 'previas' (para animación de movimiento) — no confirmado, hipótesis basada en el patrón de bytes.",
+    "map_number_address": "0x02020701",
+    "sprite": {
+      "width_px": 16,
+      "height_px": 32,
+      "palette_index": 0,
+      "expected_center_x": 112,
+      "expected_center_y": 64,
+      "_comment": "Convención pokeemerald PALSLOT_PLAYER: sprite de jugador 16x32, paleta OBJ 0. expected_center validado en vivo (Fase G) — el jugador aparece consistentemente cerca de (112,64), no del centro geométrico exacto (120,80), por cómo esta ROM posiciona la cámara/UI. Movido acá desde Program.cs (antes hardcodeado en el motor) como parte del refactor RomLoader — ver client-engine/RomLoader/MemoryAdapter.cs PlayerSpriteConfig."
+    },
+    "_map_note": "VALIDADO (2026-07-16, tercer intento). El candidato del segundo intento (IWRAM 0x0300091C -> EWRAM 0x02000820) resultó ser un FALSO POSITIVO: es un puntero real y estable, pero apunta a un buffer de tilemap/gráficos (el contenido en offset 0x2C-0x38 se vació a ceros durante el fundido de transición y no se correspondía con ningún struct de guardado — descartado). También se probó la hipótesis de que gSaveBlock1Ptr (mismo puntero 0x0300091C -> 0x02000820) siguiera el layout real de `struct SaveBlock1` de pokeemerald (location.mapGroup en puntero+0x04, location.mapNum en puntero+0x05): tres candidatos encontrados con esa heurística tampoco distinguieron dos interiores DISTINTOS entre sí (los tres dieron el mismo valor para dos casas diferentes) — también descartados. La dirección que sí funcionó se encontró con un escaneo directo de EWRAM completo (sin pasar por ningún puntero de IWRAM), comparando 4 capturas independientes: dos veces el exterior (Villa Raíz, dos arranques distintos desde el mismo savestate) y dos interiores DISTINTOS (casa derecha e izquierda de la fila de casas frente al spawn), cada interior visitado dos veces (entrar/salir/reentrar). Se buscaron offsets con un byte estable entre los dos exteriores, distinto en cada interior, y distinto entre los dos interiores entre sí (ver scan_map_bytes.js, restringido a 0x02020000-0x02030000 para evitar ruido de buffers gráficos en la zona baja de EWRAM). Resultado: byte en 0x02020701 = 40 en las 4 lecturas del exterior, = 15 en las 2 lecturas de la casa derecha, = 12 en las 2 lecturas de la casa izquierda — perfectamente reproducible. El byte en 0x02020702 (siguiente) se mantuvo en 0 en TODOS los casos (exterior e interiores), consistente con ser mapGroup=0 fijo para toda Villa Raíz si acaso corresponde a ese campo — no confirmado, y no hace falta para el uso práctico actual (comparar mapas por igualdad). IMPORTANTE: este es un identificador crudo de UNA SOLA ROM/build, no necesariamente el mapGroup/mapNum 'oficial' de pokeemerald — alcanza para detectar 'este jugador está en el mismo mapa que yo' por igualdad numérica, pero NO se armó (todavía) una tabla que traduzca estos números a nombres de mapa legibles; ver client-engine/LibretroCore/MemoryAdapter.cs IMemoryAdapter.GetMapNumber(). Sin validar todavía contra un mapa de un pueblo/ciudad DISTINTO de Villa Raíz (mismo método debería replicarse ahí para confirmar que sigue discriminando correctamente, o para armar la tabla número->nombre)."
+  },
+
+  "save_block": {
+    "team_pokemon_base_address": "0x020238BC",
+    "team_pokemon_count_address": "0x020238B8",
+    "pokemon_struct_size_bytes": 100,
+    "money_address": "0x02025734",
+    "pc_box_base_address": "0x0202A4A8",
+    "_comment": "SIN VALIDAR para esta ROM — copiado de emerald_us.json placeholder. Pendiente de la misma metodología empírica usada para player.pos_x/y (D.3 continúa)."
+  },
+
+  "notes": [
+    "Este archivo es el único lugar del proyecto que conoce direcciones de memoria específicas de esta ROM (BPES, español).",
+    "El adaptador de memoria (Client/Engine) lee este JSON y expone una interfaz genérica (GetPlayerPosition(), GetTeam(), etc.) al resto del cliente, que nunca debe hardcodear direcciones.",
+    "emerald_us.json (BPEE, inglés) es una ROM DISTINTA con build distinto: sus direcciones NO son intercambiables con las de este archivo, incluso para el mismo campo lógico.",
+    "Metodología de validación (repetible para nuevas ROMs): client-engine/ClientApp con F1 (volcar EWRAM + captura) y F3 (guardar progreso), jugar hasta tener control del personaje, volcar en dos momentos con un movimiento controlado en una sola dirección entre medio, diffear los .bin byte a byte y buscar deltas que coincidan exactamente con los tiles recorridos."
+  ]
+}
