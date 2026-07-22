@@ -168,6 +168,79 @@ namespace PokemonOnline.Protocol
         [JsonPropertyName("reason")] public string Reason { get; set; } = "";
     }
 
+    // ---- Batalla (PvP 1v1) ----
+
+    public class BattleChallengePayload
+    {
+        [JsonPropertyName("target_character_id")] public string TargetCharacterId { get; set; } = "";
+    }
+
+    public class BattleChallengeReceivedPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+        [JsonPropertyName("from_character_id")] public string FromCharacterId { get; set; } = "";
+        [JsonPropertyName("from_nickname")] public string FromNickname { get; set; } = "";
+    }
+
+    public class BattleSessionRefPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+    }
+
+    public class BattleCancelledPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+        [JsonPropertyName("reason")] public string Reason { get; set; } = "";
+    }
+
+    public class BattlePokemonPayload
+    {
+        [JsonPropertyName("pokemon_id")] public string PokemonId { get; set; } = "";
+        [JsonPropertyName("species_id")] public int SpeciesId { get; set; }
+        [JsonPropertyName("nickname")] public string? Nickname { get; set; }
+        [JsonPropertyName("level")] public int Level { get; set; }
+        [JsonPropertyName("current_hp")] public int CurrentHp { get; set; }
+        [JsonPropertyName("max_hp")] public int MaxHp { get; set; }
+    }
+
+    public class BattleStartPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+        [JsonPropertyName("yours")] public BattlePokemonPayload Yours { get; set; } = new();
+        [JsonPropertyName("opponent")] public BattlePokemonPayload Opponent { get; set; } = new();
+    }
+
+    public class BattleActionPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+        [JsonPropertyName("move_slot")] public int MoveSlot { get; set; }
+    }
+
+    public class BattleEventPayload
+    {
+        [JsonPropertyName("type")] public string Type { get; set; } = "";
+        [JsonPropertyName("actor_character_id")] public string ActorCharacterId { get; set; } = "";
+        [JsonPropertyName("move_id")] public int MoveId { get; set; }
+        [JsonPropertyName("damage")] public int Damage { get; set; }
+        [JsonPropertyName("effectiveness")] public double Effectiveness { get; set; }
+        [JsonPropertyName("fainted")] public bool Fainted { get; set; }
+    }
+
+    public class BattleTurnResultPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+        [JsonPropertyName("events")] public BattleEventPayload[] Events { get; set; } = Array.Empty<BattleEventPayload>();
+        [JsonPropertyName("your_hp")] public int YourHp { get; set; }
+        [JsonPropertyName("opponent_hp")] public int OpponentHp { get; set; }
+    }
+
+    public class BattleEndPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+        [JsonPropertyName("winner_character_id")] public string WinnerCharacterId { get; set; } = "";
+        [JsonPropertyName("you_won")] public bool YouWon { get; set; }
+    }
+
     // ---- Amigos ----
 
     public class FriendRequestPayload

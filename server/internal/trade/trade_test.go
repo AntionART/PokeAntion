@@ -63,7 +63,7 @@ func (f *testFixture) createCharacter(t *testing.T, username string) string {
 
 	characterID := uuid.NewString()
 	_, err = f.db.Exec(
-		`INSERT INTO characters (id, account_id, rom_id, nickname) VALUES ($1, $2, 'emerald_es', $3)`,
+		`INSERT INTO characters (id, account_id, rom_id, nickname, map_id) VALUES ($1, $2, 'emerald_es', $3, 'test_map')`,
 		characterID, accountID, username,
 	)
 	if err != nil {

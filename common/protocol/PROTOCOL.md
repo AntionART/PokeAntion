@@ -30,11 +30,19 @@ Convención de nombres: `snake_case` para `type`, request del cliente termina en
 ```json
 { "type": "login_ok", "payload": {
     "account_id": "uuid", "character_id": "uuid", "session_token": "jwt-o-similar",
-    "map_id": "littleroot_town", "pos_x": 10, "pos_y": 12, "color": "default"
+    "map_id": "littleroot_town", "pos_x": 10, "pos_y": 12, "color": "default",
+    "money": 3000, "starter_species": 0
 }}
 ```
 `color` es el color de sprite persistido del personaje (ver sección 2 más abajo — "default" si
 nunca lo cambió).
+
+`money` y `starter_species` son autoritativos del servidor, no del save de la ROM — el cliente
+los inyecta en la RAM del emulador al bootear (`RomLoader.NewGameBootstrap`/`GbaMemoryAdapter`,
+ver memoria `gen3_save_pointers`), nunca los lee de ahí como fuente de verdad. `starter_species`
+es el species ID interno de pokeemerald (ver `RomLoader.StarterCatalog`: Treecko=277,
+Torchic=280, Mudkip=283); `0` (`SPECIES_NONE`) significa que el personaje todavía no eligió
+inicial — no hay UI de selección todavía.
 
 ### Servidor → Cliente: `login_error`
 ```json
@@ -256,7 +264,32 @@ todos los miembros del gremio del emisor, incluyéndolo a él mismo (eco), igual
 
 ---
 
-## 9. Batallas PvE (solo reporte de resultado, no simulación en servidor)
+## 9. Batallas PvP (servidor arbitra turnos, ver `server/internal/battle` + `battlesession`)
+
+A diferencia del combate PvE (sección 10), acá el servidor simula el combate entero
+(daño/precisión/crítico/orden por Velocidad, fórmula real de Gen3) — ningún cliente puede ver
+el equipo del rival, así que ninguno de los dos emuladores locales podría decidir el resultado
+por su cuenta. El motor de combate (`server/internal/battle`) es puro/sin DB; la sesión
+(`server/internal/battlesession`) vive en memoria (no en Postgres, a diferencia de trade) porque
+es transitoria — solo el HP restante se persiste, turno a turno, en la tabla `pokemon`.
+
+Hoy solo pelea el Pokémon en `team_slot=0` de cada jugador (sin cambio de Pokémon a mitad de
+combate ni objetos).
+
+| Mensaje | Dirección | Payload |
+|---|---|---|
+| `battle_challenge` | C→S | `{ "target_character_id": "uuid" }` |
+| `battle_challenge_received` | S→C (al retado) | `{ "battle_session_id", "from_character_id", "from_nickname" }` |
+| `battle_accept` / `battle_decline` | C→S | `{ "battle_session_id": "uuid" }` |
+| `battle_start` | S→C (a ambos, cada uno con SU perspectiva) | `{ "battle_session_id", "yours": {pokemon_id,species_id,nickname,level,current_hp,max_hp}, "opponent": {...} }` |
+| `battle_cancelled` | S→C (a ambos) | `{ "battle_session_id", "reason" }` — `"declined"` o `"disconnected"` |
+| `battle_action` | C→S | `{ "battle_session_id", "move_slot": 0-3 }` — el turno solo se resuelve cuando AMBOS mandaron su acción |
+| `battle_turn_result` | S→C (a ambos, cada uno con su propio HP) | `{ "battle_session_id", "events": [ { "type", "actor_character_id", "move_id", "damage", "effectiveness", "fainted" } ], "your_hp", "opponent_hp" }` — `type` es uno de `damage`/`miss`/`faint`/`stat_change`/`no_pp` |
+| `battle_end` | S→C (a ambos) | `{ "battle_session_id", "winner_character_id", "you_won" }` |
+
+---
+
+## 10. Batallas PvE (solo reporte de resultado, no simulación en servidor)
 
 ### Cliente → Servidor: `battle_result`
 ```json
@@ -268,12 +301,11 @@ todos los miembros del gremio del emisor, incluyéndolo a él mismo (eco), igual
 }}
 ```
 El servidor valida que los deltas sean razonables (anti-cheat básico: límites de experiencia/dinero
-por batalla) antes de persistir. Preparado para, en el futuro, añadir `battle_request`/`battle_turn`
-cuando se implemente PvP con el servidor arbitrando turnos.
+por batalla) antes de persistir.
 
 ---
 
-## 10. Errores genéricos
+## 11. Errores genéricos
 
 ```json
 { "type": "error", "payload": { "code": "rate_limited", "message": "..." } }

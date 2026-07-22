@@ -41,4 +41,17 @@ public sealed class MockMemoryAdapter : IMemoryAdapter
     /// contrato de IMemoryAdapter): el motor simplemente no muestra sprite propio recapturado,
     /// nada se rompe.</summary>
     public OamEntry? FindPlayerSprite(IReadOnlyList<OamEntry> oamEntries) => null;
+
+    /// <summary>Sin ROM real no hay SaveBlock1/2 que leer — null es una respuesta válida.</summary>
+    public int? GetMoney() => null;
+
+    /// <summary>Sin ROM real no hay equipo que leer — null es una respuesta válida.</summary>
+    public IReadOnlyList<Gen3Codec.DecryptedPokemon>? GetParty() => null;
+
+    /// <summary>Sin ROM real no hay nada que escribir — no-op, consistente con el resto del mock.</summary>
+    public void SetMoney(int amount) { }
+
+    public bool? GetFlag(int flagId) => null;
+    public void SetFlag(int flagId, bool value) { }
+    public void SetPartyPokemon(int slot, Gen3Codec.NewPokemonSpec spec) { }
 }

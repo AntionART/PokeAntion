@@ -24,8 +24,8 @@ namespace ClientApp.Social;
 /// </summary>
 internal sealed class SocialPanel
 {
-    private enum Tab { Friends, Party, Trade, Market, Guild, Appearance }
-    private const int TabCount = 6;
+    private enum Tab { Friends, Party, Trade, Battle, Market, Guild, Appearance }
+    private const int TabCount = 7;
 
     private const int VK_F5 = 0x74;
     private const int VK_LEFT = 0x25, VK_RIGHT = 0x27, VK_UP = 0x26, VK_DOWN = 0x28;
@@ -46,6 +46,10 @@ internal sealed class SocialPanel
     private readonly Func<string> _myColor;
 
     public bool IsActive { get; private set; }
+
+    /// <summary>Fuerza el cierre del panel — usado cuando BattleScreen toma control total de
+    /// la pantalla (ver Program.cs), para que ambas superficies no queden dibujándose a la vez.</summary>
+    public void Close() => IsActive = false;
 
     private Tab _tab;
     private int _selection;
@@ -75,6 +79,13 @@ internal sealed class SocialPanel
     private ActiveTrade? _trade;
     private readonly List<(string SessionId, string FromCharacterId, string FromNickname)> _pendingTradeRequests = new();
     private List<PokemonSummaryPayload> _myPokemon = new();
+
+    // ---- Batalla PvP: solo la negociación (desafiar/aceptar/rechazar) vive acá, mismo patrón
+    // row-based que trade — la batalla en sí (sprites, HP, turnos) la toma BattleScreen apenas
+    // llega "battle_start" (ese mensaje también llega acá, pero se ignora: BattleScreen es quien
+    // lo procesa). Un jugador no puede tener dos desafíos entrantes simultáneos hoy (no hace
+    // falta más para 1v1 casual) — se guardan todos igual, por si acaso, como en trade.
+    private readonly List<(string SessionId, string FromCharacterId, string FromNickname)> _pendingBattleChallenges = new();
 
     // ---- Mercado (asincrónico: no hace falta que el otro jugador esté online) ----
     private List<MarketListingPayload> _marketListings = new(); // "explorar" (de todos)
@@ -174,6 +185,21 @@ internal sealed class SocialPanel
                 _status = $"Trade cancelado ({tcan?.Reason}).";
                 _statusIsError = true;
                 _trade = null;
+                break;
+
+            case "battle_challenge_received":
+                var breq = payload.Deserialize<BattleChallengeReceivedPayload>();
+                if (breq != null) _pendingBattleChallenges.Add((breq.BattleSessionId, breq.FromCharacterId, breq.FromNickname));
+                break;
+            case "battle_start":
+                // Lo consume BattleScreen — acá solo hace falta limpiar el desafío de la lista
+                // de pendientes si estaba ahí (lo aceptamos nosotros, ver BuildRows Tab.Battle).
+                var bstart = payload.Deserialize<BattleStartPayload>();
+                if (bstart != null) _pendingBattleChallenges.RemoveAll(b => b.SessionId == bstart.BattleSessionId);
+                break;
+            case "battle_cancelled":
+                var bcan = payload.Deserialize<BattleCancelledPayload>();
+                if (bcan != null) _pendingBattleChallenges.RemoveAll(b => b.SessionId == bcan.BattleSessionId);
                 break;
 
             case "my_pokemon_list":
@@ -550,6 +576,37 @@ internal sealed class SocialPanel
                 }
                 break;
 
+            case Tab.Battle:
+                foreach (var (sessionId, fromCharId, fromNick) in _pendingBattleChallenges)
+                {
+                    rows.Add(new Row
+                    {
+                        Text = $"Desafío de {fromNick}  (Enter: aceptar, Retroceso: rechazar)",
+                        R = 1f, G = 0.85f, B = 0.3f,
+                        OnEnter = () =>
+                        {
+                            _ws.SendAsync("battle_accept", new BattleSessionRefPayload { BattleSessionId = sessionId }).GetAwaiter().GetResult();
+                            _pendingBattleChallenges.RemoveAll(b => b.SessionId == sessionId);
+                            IsActive = false; // battle_start va a activar BattleScreen; el panel no debe tapar la pantalla de batalla
+                        },
+                        OnBack = () =>
+                        {
+                            _ws.SendAsync("battle_decline", new BattleSessionRefPayload { BattleSessionId = sessionId }).GetAwaiter().GetResult();
+                            _pendingBattleChallenges.RemoveAll(b => b.SessionId == sessionId);
+                        },
+                    });
+                }
+                foreach (var (charId, info) in _nearbyPlayers())
+                {
+                    string targetId = charId;
+                    rows.Add(new Row
+                    {
+                        Text = $"Retar a batalla a {info.Nickname}",
+                        OnEnter = () => _ws.SendAsync("battle_challenge", new BattleChallengePayload { TargetCharacterId = targetId }).GetAwaiter().GetResult(),
+                    });
+                }
+                break;
+
             case Tab.Market:
                 if (_sellingPickingPokemon)
                 {
@@ -673,13 +730,19 @@ internal sealed class SocialPanel
     {
         if (!IsActive) return;
 
-        const float PanelX = 40f, PanelY = 40f;
+        const float PanelX = 40f, PanelY = 40f, PanelWidth = 560f;
         float lineH = renderer.TextLineHeight;
         float y = PanelY;
 
-        renderer.AddText("PANEL SOCIAL", PanelX, y, 1f, 0.85f, 0.2f, 1f, 1.3f); y += lineH * 1.8f;
+        // Fondo de la tarjeta (paleta pedida: fondo casi negro, borde/título en cian
+        // primario) — antes este panel era texto flotando sobre el juego sin ningún
+        // contenedor visual, ver Theme.cs para la paleta completa.
+        renderer.AddRect(PanelX - 16f, PanelY - 16f, PanelWidth, windowHeight - PanelY, Theme.Background.R, Theme.Background.G, Theme.Background.B, 0.88f);
+        renderer.AddRect(PanelX - 16f, PanelY - 16f, PanelWidth, 3f, Theme.Primary.R, Theme.Primary.G, Theme.Primary.B, 1f);
 
-        string[] tabNames = ["Amigos", "Grupo", "Comercio", "Mercado", "Gremio", "Apariencia"];
+        renderer.AddText("PANEL SOCIAL", PanelX, y, Theme.Primary.R, Theme.Primary.G, Theme.Primary.B, 1f, 1.3f); y += lineH * 1.8f;
+
+        string[] tabNames = ["Amigos", "Grupo", "Comercio", "Batalla", "Mercado", "Gremio", "Apariencia"];
         var tabLine = new StringBuilder();
         for (int i = 0; i < tabNames.Length; i++)
         {
@@ -723,6 +786,8 @@ internal sealed class SocialPanel
                 bool sel = i == _selection;
                 string prefix = sel ? "> " : "  ";
                 var row = rows[i];
+                if (sel)
+                    renderer.AddRect(PanelX - 4f, y - 1f, PanelWidth - 24f, lineH, Theme.Secondary.R, Theme.Secondary.G, Theme.Secondary.B, 0.25f);
                 renderer.AddText(prefix + row.Text, PanelX, y, row.R, row.G, row.B, 1f);
                 y += lineH;
             }
@@ -745,6 +810,7 @@ internal sealed class SocialPanel
             Tab.Friends => "Izq/Der: pestaña  Arr/Abajo: elegir  Enter/Retroceso: aceptar/rechazar  F4: agregar por usuario  F5: cerrar",
             Tab.Party => "Izq/Der: pestaña  Arr/Abajo: elegir  Enter: invitar/aceptar  Retroceso: rechazar/salir del grupo  F5: cerrar",
             Tab.Trade => "Izq/Der: pestaña  Arr/Abajo: elegir  Enter: pedir/aceptar/ofrecer  C: confirmar  Retroceso: cancelar  F5: cerrar",
+            Tab.Battle => "Izq/Der: pestaña  Arr/Abajo: elegir  Enter: retar/aceptar  Retroceso: rechazar  F5: cerrar",
             Tab.Market => _sellingPickingPokemon
                 ? "Arr/Abajo: elegir  Enter: elegir este  Escape: cancelar"
                 : "Izq/Der: pestaña  Arr/Abajo: elegir  Enter: comprar  Retroceso: cancelar publicación propia  F4: vender  F5: cerrar",

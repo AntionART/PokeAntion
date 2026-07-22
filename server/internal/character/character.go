@@ -20,3 +20,12 @@ func (s *Service) SetColor(characterID, color string) error {
 	_, err := s.db.Exec(`UPDATE characters SET sprite_color = $1 WHERE id = $2`, color, characterID)
 	return err
 }
+
+// SetMoney persiste el dinero del personaje. Autoritativo del servidor (no del save de la
+// ROM) — el cliente lo inyecta en la RAM del emulador al bootear vía
+// RomLoader.NewGameBootstrap/GbaMemoryAdapter.SetMoney, nunca lo lee de ahí como fuente de
+// verdad (ver gen3_save_pointers memory).
+func (s *Service) SetMoney(characterID string, amount int) error {
+	_, err := s.db.Exec(`UPDATE characters SET money = $1 WHERE id = $2`, amount, characterID)
+	return err
+}

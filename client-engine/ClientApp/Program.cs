@@ -38,6 +38,56 @@ string serverWs = GetOpt(args, "--server-ws") ?? "ws://localhost:8080/ws";
 string repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 string memoryMapsDir = GetOpt(args, "--memory-maps-dir") ?? Path.Combine(repoRoot, "memory-maps");
 
+// Sprites de batalla (Fase battle-3): en vez de descomprimir LZ77 y ubicar tablas de punteros
+// en el binario compilado, se reusan los PNG ya extraídos del checkout local de
+// pokeemerald-master (mismo asset exacto del juego) — decisión tomada con el usuario, ver
+// ClientApp.Battle.BattleSpriteAssets.
+string spritesDir = GetOpt(args, "--sprites-dir")
+    ?? Path.Combine(repoRoot, "Pokemon Esmeralda", "pokeemerald-master", "pokeemerald-master", "graphics", "pokemon");
+
+// --dump-sprite <species> <front|back> <out.png>: decodifica un sprite y lo vuelca a un PNG
+// real (no BMP del backbuffer) SIN crear ventana/device D3D — verificación offline de
+// SpritePngLoader (orden de canales, transparencia) más barata que probarlo en vivo.
+int dumpSpriteIndex = Array.IndexOf(args, "--dump-sprite");
+if (dumpSpriteIndex >= 0 && dumpSpriteIndex + 3 < args.Length)
+{
+    int species = int.Parse(args[dumpSpriteIndex + 1]);
+    string side = args[dumpSpriteIndex + 2];
+    string outPath = args[dumpSpriteIndex + 3];
+    var loaded = side == "back"
+        ? ClientApp.Battle.BattleSpriteAssets.LoadBack(spritesDir, species)
+        : ClientApp.Battle.BattleSpriteAssets.LoadFront(spritesDir, species);
+    if (loaded == null)
+    {
+        Console.Error.WriteLine($"No se pudo cargar el sprite de species={species} ({side}) desde {spritesDir}");
+        return 1;
+    }
+    var (rgba, w, h) = loaded.Value;
+    using var bmp = new System.Drawing.Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+    var rect = new System.Drawing.Rectangle(0, 0, w, h);
+    var data = bmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+    unsafe
+    {
+        byte* dst = (byte*)data.Scan0;
+        for (int y = 0; y < h; y++)
+        {
+            byte* row = dst + y * data.Stride;
+            for (int x = 0; x < w; x++)
+            {
+                int i = (y * w + x) * 4;
+                row[x * 4 + 0] = rgba[i + 2]; // B
+                row[x * 4 + 1] = rgba[i + 1]; // G
+                row[x * 4 + 2] = rgba[i + 0]; // R
+                row[x * 4 + 3] = rgba[i + 3]; // A
+            }
+        }
+    }
+    bmp.UnlockBits(data);
+    bmp.Save(outPath, System.Drawing.Imaging.ImageFormat.Png);
+    Console.WriteLine($"Sprite volcado: {outPath} ({w}x{h})");
+    return 0;
+}
+
 // Fase RomLoader-3: ninguna ROM/rom_id/memory-map particular queda hardcodeada en el motor —
 // el catálogo (RomCatalog.Discover, ya agnóstico) es la única fuente de "qué ROM se juega hoy
 // acá". Se arma una sola vez y lo usan tanto --dev-boot como el flujo normal de LoginFlow más
@@ -89,6 +139,7 @@ string myCharacterId = "";
 string currentMapId = "";
 string myColor = "default";
 SocialPanel? socialPanel = null;
+ClientApp.Battle.BattleScreen? battleScreen = null;
 VoiceChat? voice = null;
 
 // Engancha el handler de gameplay y arma el panel social/voz apenas hay sesión autenticada
@@ -103,6 +154,7 @@ void WireUpSession()
 {
     if (ws == null) return;
     socialPanel = new SocialPanel(ws, myCharacterId, () => remotePlayers, () => myColor);
+    battleScreen = new ClientApp.Battle.BattleScreen(ws, myCharacterId, () => memAdapter?.GetParty(), spritesDir);
     ws.OnMessage += GameplayMessageHandler;
     voice = new VoiceChat(ws);
     Console.WriteLine(voice.CaptureAvailable
@@ -378,6 +430,8 @@ void GameplayMessageHandler(string type, JsonElement payload)
     }
     // Fase G: amigos/grupo/comercio — el panel ignora los tipos que no le interesan.
     socialPanel?.HandleMessage(type, payload);
+    // Fase battle-4: batalla PvP — mismo criterio, ignora lo que no le interesa.
+    battleScreen?.HandleMessage(type, payload);
 }
 
 
@@ -400,7 +454,7 @@ bool chatActive = false;
 
 if (core != null) core.InputState = (port, device, index, id) =>
 {
-    if (chatActive || (socialPanel != null && socialPanel.IsActive)) return 0;
+    if (chatActive || (socialPanel != null && socialPanel.IsActive) || (battleScreen != null && battleScreen.IsActive)) return 0;
     if (port != 0 || device != RetroDevice.Joypad) return 0;
     bool pressed = (JoypadButton)id switch
     {
@@ -421,16 +475,26 @@ if (core != null) core.InputState = (port, device, index, id) =>
 
 // F1 = volcar EWRAM (256KB crudos) + una captura, con timestamp, mientras se juega en vivo.
 // Herramienta de desarrollo para encontrar/validar direcciones de memoria (ver D.3 en el README).
-const int VK_F1 = 0x70, VK_F3 = 0x72, VK_F6 = 0x75;
+const int VK_F1 = 0x70, VK_F3 = 0x72, VK_F6 = 0x75, VK_F8 = 0x77;
 string dumpDir = Path.Combine(AppContext.BaseDirectory, "dumps");
 Directory.CreateDirectory(dumpDir);
-bool prevF1 = false, prevF3 = false, prevF6 = false, prevChatToggle = false;
+bool prevF1 = false, prevF3 = false, prevF6 = false, prevF8 = false, prevChatToggle = false;
 
 (string MapId, int X, int Y)? lastSentPos = null;
 DateTime lastMoveSentAt = DateTime.MinValue;
 var moveSendInterval = TimeSpan.FromMilliseconds(150); // throttle: máx ~6-7 "move" por segundo
 byte? spawnMapNumber = null;
 byte? currentMapNumber = null;
+
+// --debug-battle <mySpecies> <oppSpecies>: inyecta un "battle_start" sintético (sin desafiar a
+// nadie de verdad) directo en BattleScreen — verificación visual barata del layout (sprites/HP
+// bars/menú) sin necesitar dos clientes reales completando el desafío/aceptación por WS. Se
+// dispara una sola vez, un par de frames después de que arranca el loop (para que WireUpSession
+// ya haya corrido y battleScreen exista).
+int debugBattleIndex = Array.IndexOf(args, "--debug-battle");
+(int Mine, int Opponent)? debugBattleSpecies = debugBattleIndex >= 0 && debugBattleIndex + 2 < args.Length
+    ? (int.Parse(args[debugBattleIndex + 1]), int.Parse(args[debugBattleIndex + 2]))
+    : null;
 
 Console.WriteLine("Ventana abierta. Cerrala para salir.");
 Console.WriteLine($"F1 = volcar EWRAM + captura | F3 = guardar estado -> {dumpDir}");
@@ -447,6 +511,26 @@ while (!window.ShouldClose)
             core.RunFrame(); // dispara FrameReady sincrónicamente -> ya actualiza la textura
     }
     frame++;
+
+    if (debugBattleSpecies != null && frame == 3 && battleScreen != null)
+    {
+        var fakeStart = new BattleStartPayload
+        {
+            BattleSessionId = "debug",
+            Yours = new BattlePokemonPayload { PokemonId = "debug-mine", SpeciesId = debugBattleSpecies.Value.Mine, Nickname = "MITUYO", Level = 5, CurrentHp = 14, MaxHp = 20 },
+            Opponent = new BattlePokemonPayload { PokemonId = "debug-opp", SpeciesId = debugBattleSpecies.Value.Opponent, Nickname = "RIVAL", Level = 5, CurrentHp = 18, MaxHp = 22 },
+        };
+        var fakeElement = JsonSerializer.SerializeToElement(fakeStart);
+        battleScreen.HandleMessage("battle_start", fakeElement);
+        battleScreen.HandleMessage("battle_turn_result", JsonSerializer.SerializeToElement(new BattleTurnResultPayload
+        {
+            BattleSessionId = "debug",
+            Events = [new BattleEventPayload { Type = "damage", ActorCharacterId = myCharacterId, MoveId = 10, Damage = 4, Effectiveness = 1.0 }],
+            YourHp = 14,
+            OpponentHp = 18,
+        }));
+        debugBattleSpecies = null;
+    }
 
     PlayerPosition? localPos = null;
     if (memAdapter != null)
@@ -495,14 +579,21 @@ while (!window.ShouldClose)
         renderer.SetRemoteSprites(offsets);
     }
 
-    bool socialPanelActive = socialPanel != null && socialPanel.IsActive;
+    bool battleActive = battleScreen != null && battleScreen.IsActive;
+    // BattleScreen toma control total de pantalla/input: si el panel social seguía abierto
+    // (ej. el propio retador, que nunca pasó por el "Enter: aceptar" que cierra el panel del
+    // otro lado, ver SocialPanel.Tab.Battle), se fuerza su cierre para que no queden dos
+    // superficies dibujándose/compitiendo por el teclado a la vez.
+    if (battleActive) socialPanel?.Close();
+    bool socialPanelActive = !battleActive && socialPanel != null && socialPanel.IsActive;
 
     // Fase F: abrir/cerrar el chat con F2 (como Minecraft/PokeMMO usan T, pero una tecla de
     // letra puede colarse como WM_CHAR en el propio mensaje — F2 nunca genera carácter).
     // Edge-detected: un toque = un toggle, no mantenido. No se abre si el panel social (F5)
-    // ya está abierto, para no tener dos superficies de input compitiendo por el teclado.
+    // ya está abierto, ni durante una batalla, para no tener dos superficies de input
+    // compitiendo por el teclado.
     bool chatToggleNow = window.IsKeyDown(VK_CHAT_TOGGLE);
-    if (chatToggleNow && !prevChatToggle && !chatActive && !socialPanelActive && ws != null)
+    if (chatToggleNow && !prevChatToggle && !chatActive && !socialPanelActive && !battleActive && ws != null)
     {
         chatActive = true;
         chatInput.Clear();
@@ -512,7 +603,11 @@ while (!window.ShouldClose)
 
     var typedChars = window.ConsumeTypedChars();
 
-    if (chatActive)
+    if (battleActive)
+    {
+        battleScreen!.HandleInput(window);
+    }
+    else if (chatActive)
     {
         foreach (char c in typedChars)
         {
@@ -558,12 +653,13 @@ while (!window.ShouldClose)
 
     // Fase F: voz por push-to-talk. Solo cuando ninguna superficie de texto está activa (si
     // no, la V se colaría en el mensaje) y solo si hay micrófono real detectado en este equipo.
-    voice?.SetTalking(!chatActive && !socialPanelActive && window.IsKeyDown(VK_V));
+    voice?.SetTalking(!chatActive && !socialPanelActive && !battleActive && window.IsKeyDown(VK_V));
 
     renderer.ClearText();
     DrawChatUi();
     DrawRemoteNameTags();
     socialPanel?.Draw(renderer, WindowWidth, WindowHeight);
+    battleScreen?.Draw(renderer, WindowWidth, WindowHeight); // encima de todo: reemplaza la vista mientras dura la batalla
     renderer.Render(); // un solo Present por iteración: el turbo se siente como "avance rápido", no como parpadeo
 
     // Etiqueta con el nickname sobre cada sprite remoto, para diferenciarlos a simple vista
@@ -653,6 +749,20 @@ while (!window.ShouldClose)
                 foreach (var r in core.Regions)
                     Console.WriteLine($"[diag]   name=\"{r.Name}\" start=0x{r.Start:X8} len=0x{r.Len:X} flags=0x{r.Flags:X}");
             }
+            if (memAdapter != null)
+            {
+                var money = memAdapter.GetMoney();
+                Console.WriteLine(money != null ? $"[diag] money = {money}" : "[diag] money = (memory-map sin save_block_pointers)");
+                var party = memAdapter.GetParty();
+                if (party != null)
+                {
+                    Console.WriteLine($"[diag] equipo ({party.Count}):");
+                    foreach (var mon in party)
+                        Console.WriteLine($"[diag]   species={mon.Species} personality=0x{mon.Personality:X8} otId=0x{mon.OtId:X8} checksumValid={mon.ChecksumValid}");
+                }
+                const int FLAG_SYS_CLOCK_SET = 0x860 + 0x35;
+                Console.WriteLine($"[diag] FLAG_SYS_CLOCK_SET = {memAdapter.GetFlag(FLAG_SYS_CLOCK_SET)}");
+            }
             var ewram = core.FindEwram();
             if (ewram != null)
             {
@@ -718,6 +828,27 @@ while (!window.ShouldClose)
         Console.WriteLine($"[sprites] volcadas hasta 6 candidatas a dumps/sprite_{stamp}_*.bmp");
     }
     prevF6 = f6Now;
+
+    // F8 = prueba manual y temporal de escritura (dinero + inicial), solo con --test-write —
+    // verifica en vivo que GbaMemoryAdapter.SetMoney()/SetPartyPokemon() funcionan de punta a
+    // punta contra memoria real, no solo en teoría (ver gen3_save_pointers memory).
+    bool f8Now = window.IsKeyDown(VK_F8);
+    if (f8Now && !prevF8 && args.Contains("--test-write") && memAdapter != null && core != null)
+    {
+        RomLoader.NewGameBootstrap.Apply(memAdapter, startingMoney: 999999,
+            RomLoader.StarterCatalog.SpeciesTreecko, nickname: "TREECKO", otName: "TEST", new Random(42));
+        // gPlayerParty (0x020244EC, global estático EWRAM_DATA) es la copia que el juego
+        // realmente muestra en pantalla durante el gameplay EN CURSO — NewGameBootstrap.Apply
+        // solo escribe SaveBlock1 (la copia persistida), que es lo correcto para el uso real
+        // (aplicarlo antes de que el juego copie a gPlayerParty). Esta prueba corre a mitad de
+        // partida, así que además hay que pisar gPlayerParty a mano para verlo reflejado ya
+        // mismo en pantalla — no hace falta en el flujo real.
+        var bus = new LibretroCore.GbaMemoryBus(core);
+        var verifySpec = RomLoader.StarterCatalog.BuildStarterSpec(RomLoader.StarterCatalog.SpeciesTreecko, "TREECKO", "TEST", new Random(42));
+        bus.WriteBytes(0x020244EC + 5u * 100u, RomLoader.Gen3Codec.BuildFullPartySlot(verifySpec));
+        Console.WriteLine("[diag] NewGameBootstrap.Apply() aplicado (money=999999, party[0]=Treecico nv5, flags de intro) + gPlayerParty[5] para verificación visual. Presioná F1 para chequear, o abrí el menú Pokémon.");
+    }
+    prevF8 = f8Now;
 
     if (dumpPath != null && frame == dumpAfterFrames)
     {

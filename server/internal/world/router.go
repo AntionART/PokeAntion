@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"pokemon-online/server/internal/battlesession"
 	"pokemon-online/server/internal/character"
 	"pokemon-online/server/internal/chat"
 	"pokemon-online/server/internal/market"
@@ -26,10 +27,11 @@ type Router struct {
 	market    *market.Service
 	guild     *social.GuildService
 	character *character.Service
+	battle    *battlesession.Service
 }
 
-func NewRouter(hub *ws.Hub, chatSvc *chat.Service, tradeSvc *trade.Service, friendsSvc *social.Service, partySvc *social.PartyService, marketSvc *market.Service, guildSvc *social.GuildService, characterSvc *character.Service) *Router {
-	return &Router{hub: hub, chat: chatSvc, trade: tradeSvc, friends: friendsSvc, party: partySvc, market: marketSvc, guild: guildSvc, character: characterSvc}
+func NewRouter(hub *ws.Hub, chatSvc *chat.Service, tradeSvc *trade.Service, friendsSvc *social.Service, partySvc *social.PartyService, marketSvc *market.Service, guildSvc *social.GuildService, characterSvc *character.Service, battleSvc *battlesession.Service) *Router {
+	return &Router{hub: hub, chat: chatSvc, trade: tradeSvc, friends: friendsSvc, party: partySvc, market: marketSvc, guild: guildSvc, character: characterSvc, battle: battleSvc}
 }
 
 // characterIDLen es el largo fijo de un UUID en su forma con guiones ("xxxxxxxx-xxxx-...").
@@ -118,6 +120,14 @@ func (r *Router) HandleMessage(characterID string, env protocol.Envelope) {
 		r.handleGuildInfo(characterID)
 	case "set_color":
 		r.handleSetColor(characterID, env)
+	case "battle_challenge":
+		r.handleBattleChallenge(characterID, env)
+	case "battle_accept":
+		r.handleBattleAccept(characterID, env)
+	case "battle_decline":
+		r.handleBattleDecline(characterID, env)
+	case "battle_action":
+		r.handleBattleAction(characterID, env)
 	default:
 		slog.Warn("tipo de mensaje desconocido", "component", "router", "type", env.Type)
 	}
@@ -252,6 +262,11 @@ func (r *Router) HandleDisconnect(characterID string) {
 			TradeSessionID: c.SessionID, Reason: "disconnected",
 		})
 		r.hub.SendTo(c.OtherCharID, env)
+	}
+
+	for _, otherCharID := range r.battle.CancelActiveForCharacter(characterID) {
+		env, _ := protocol.NewEnvelope("battle_cancelled", protocol.BattleCancelledPayload{Reason: "disconnected"})
+		r.hub.SendTo(otherCharID, env)
 	}
 
 	if mapID := r.hub.MapOfCharacter(characterID); mapID != "" {
@@ -573,6 +588,119 @@ func (r *Router) handleTradeConfirm(characterID string, env protocol.Envelope) {
 	})
 	r.hub.SendTo(result.CharAID, doneForA)
 	r.hub.SendTo(result.CharBID, doneForB)
+}
+
+// ---- Batalla (PvP 1v1, ver server/internal/battlesession) ----
+
+func (r *Router) handleBattleChallenge(characterID string, env protocol.Envelope) {
+	var p protocol.BattleChallengePayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	sessionID := r.battle.Challenge(characterID, p.TargetCharacterID)
+	notify, _ := protocol.NewEnvelope("battle_challenge_received", protocol.BattleChallengeReceivedPayload{
+		BattleSessionID: sessionID, FromCharacterID: characterID, FromNickname: r.hub.NicknameOfCharacter(characterID),
+	})
+	r.hub.SendTo(p.TargetCharacterID, notify)
+}
+
+func (r *Router) handleBattleAccept(characterID string, env protocol.Envelope) {
+	var p protocol.BattleSessionRefPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	charA, charB, viewA, viewB, err := r.battle.Accept(p.BattleSessionID)
+	if err != nil {
+		slog.Error("error aceptando batalla", "component", "battle", "battle_session_id", p.BattleSessionID, "error", err)
+		errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: err.Error()})
+		r.hub.SendTo(characterID, errEnv)
+		return
+	}
+
+	// Cada participante recibe battle_start con SU propia perspectiva (yours/opponent).
+	wireA := battlePokemonToWireCharacter(viewA)
+	wireB := battlePokemonToWireCharacter(viewB)
+	startForA, _ := protocol.NewEnvelope("battle_start", protocol.BattleStartPayload{
+		BattleSessionID: p.BattleSessionID, Yours: wireA, Opponent: wireB,
+	})
+	startForB, _ := protocol.NewEnvelope("battle_start", protocol.BattleStartPayload{
+		BattleSessionID: p.BattleSessionID, Yours: wireB, Opponent: wireA,
+	})
+	r.hub.SendTo(charA, startForA)
+	r.hub.SendTo(charB, startForB)
+}
+
+func battlePokemonToWireCharacter(v battlesession.PokemonView) protocol.BattlePokemonPayload {
+	return protocol.BattlePokemonPayload{
+		PokemonID: v.PokemonID, SpeciesID: v.Species, Nickname: v.Nickname,
+		Level: v.Level, CurrentHP: v.CurrentHP, MaxHP: v.MaxHP,
+	}
+}
+
+func (r *Router) handleBattleDecline(characterID string, env protocol.Envelope) {
+	var p protocol.BattleSessionRefPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	charA, charB, err := r.battle.Cancel(p.BattleSessionID)
+	if err != nil {
+		slog.Error("error declinando batalla", "component", "battle", "battle_session_id", p.BattleSessionID, "error", err)
+		return
+	}
+	cancelEnv, _ := protocol.NewEnvelope("battle_cancelled", protocol.BattleCancelledPayload{
+		BattleSessionID: p.BattleSessionID, Reason: "declined",
+	})
+	r.hub.SendTo(charA, cancelEnv)
+	r.hub.SendTo(charB, cancelEnv)
+}
+
+func (r *Router) handleBattleAction(characterID string, env protocol.Envelope) {
+	var p protocol.BattleActionPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	result, err := r.battle.SubmitAction(p.BattleSessionID, characterID, p.MoveSlot)
+	if err != nil {
+		slog.Error("error procesando acción de batalla", "component", "battle", "character_id", characterID, "battle_session_id", p.BattleSessionID, "error", err)
+		errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: err.Error()})
+		r.hub.SendTo(characterID, errEnv)
+		return
+	}
+	if result == nil {
+		return // falta la acción del rival, todavía no hay turno que reportar
+	}
+
+	events := make([]protocol.BattleEventPayload, 0, len(result.Events))
+	for _, e := range result.Events {
+		events = append(events, protocol.BattleEventPayload{
+			Type: e.Type.String(), ActorCharacterID: e.ActorCharID,
+			MoveID: e.MoveID, Damage: e.Damage, Effectiveness: e.Effectiveness, Fainted: e.Fainted,
+		})
+	}
+
+	for charID, hp := range result.HPByCharacter {
+		opponentHP := 0
+		for otherID, otherHP := range result.HPByCharacter {
+			if otherID != charID {
+				opponentHP = otherHP
+			}
+		}
+		turnEnv, _ := protocol.NewEnvelope("battle_turn_result", protocol.BattleTurnResultPayload{
+			BattleSessionID: p.BattleSessionID, Events: events, YourHP: hp, OpponentHP: opponentHP,
+		})
+		r.hub.SendTo(charID, turnEnv)
+	}
+
+	if result.Finished {
+		winnerEnv, _ := protocol.NewEnvelope("battle_end", protocol.BattleEndPayload{
+			BattleSessionID: p.BattleSessionID, WinnerCharacterID: result.WinnerCharID, YouWon: true,
+		})
+		loserEnv, _ := protocol.NewEnvelope("battle_end", protocol.BattleEndPayload{
+			BattleSessionID: p.BattleSessionID, WinnerCharacterID: result.WinnerCharID, YouWon: false,
+		})
+		r.hub.SendTo(result.WinnerCharID, winnerEnv)
+		r.hub.SendTo(result.LoserCharID, loserEnv)
+	}
 }
 
 // ---- Mercado (asincrónico) ----
