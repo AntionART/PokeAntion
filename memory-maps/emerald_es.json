@@ -7,6 +7,19 @@
   "rom_checksum_sha1": "FE1558A3DCB0360AB558969E09B690888B846DD9",
   "_comment": "A diferencia de emerald_us.json (placeholder), las direcciones player.pos_x_address y player.pos_y_address de este archivo fueron VALIDADAS EMPÍRICAMENTE (Fase D.3, 2026-07-15) contra la ROM real, jugando de verdad y comparando volcados de EWRAM antes/después de moverse. El resto de las direcciones (save_block, equipo, mapa) siguen siendo placeholder — heredadas de emerald_us.json sin validar todavía para esta ROM.",
 
+  "save_block_pointers": {
+    "save_block1_pointer_address": "0x03005D8C",
+    "save_block2_pointer_address": "0x03005D90",
+    "pos_offset": "0x00",
+    "map_num_offset": "0x05",
+    "player_party_offset": "0x238",
+    "player_party_count_offset": "0x234",
+    "money_offset": "0x490",
+    "flags_offset": "0x1270",
+    "encryption_key_offset": "0xAC",
+    "_validation": "2026-07-21: MISMA dirección de punteros de IWRAM y MISMOS offsets que emerald_us.json (BPEE) funcionaron sin cambios — confirma que ES y US comparten el mismo layout de código/structs compilado (pokeemerald localiza solo texto/charmap, no reordena structs ni realoca globals). Probado cargando el mismo .sav de prueba (8 medallas) con --load-sav contra esta ROM: playerPartyCount=6, las 6 personality/otId idénticas a la lectura en US, dinero desencriptado = 320680 (idéntico al resultado en US, mismo .sav) — ver gen3_save_pointers memory. Mismo aviso que en US: SaveBlock1/2 se realocan durante la partida, siempre releer el puntero antes de cada acceso, nunca cachear la dirección resuelta."
+  },
+
   "player": {
     "pos_x_address": "0x02025A30",
     "pos_y_address": "0x02025A32",
@@ -26,12 +39,7 @@
   },
 
   "save_block": {
-    "team_pokemon_base_address": "0x020238BC",
-    "team_pokemon_count_address": "0x020238B8",
-    "pokemon_struct_size_bytes": 100,
-    "money_address": "0x02025734",
-    "pc_box_base_address": "0x0202A4A8",
-    "_comment": "SIN VALIDAR para esta ROM — copiado de emerald_us.json placeholder. Pendiente de la misma metodología empírica usada para player.pos_x/y (D.3 continúa)."
+    "_comment": "OBSOLETO 2026-07-21: reemplazado por save_block_pointers (indirección de puntero) arriba — estas direcciones fijas nunca se validaron y el equipo/dinero real vive en SaveBlock1/2, que se realocan (ver emerald_us.json y gen3_save_pointers memory). Se deja el bloque para no romper nada que lo lea, pero no usar."
   },
 
   "notes": [

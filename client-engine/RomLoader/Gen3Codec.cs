@@ -15,15 +15,19 @@ public static class Gen3Codec
     public static uint DecryptMoney(uint rawValue, uint encryptionKey) => rawValue ^ encryptionKey;
     public static uint EncryptMoney(uint value, uint encryptionKey) => value ^ encryptionKey;
 
-    /// <summary>Orden de las 4 substructuras (G=Growth, A=Attacks, E=EVs/Condition, M=Misc)
+    /// <summary>Orden de las 4 substructuras (0=Growth, 1=Attacks, 2=EVs/Condition, 3=Misc)
     /// dentro del bloque de 48 bytes cifrado de un Pokémon, indexado por personality % 24.
-    /// Tabla estándar de pokeemerald (gBoxPokemonSubstructOrder equivalente).</summary>
+    /// order[slot] = qué substructura (0-3) ocupa esa posición física. Recalculada 2026-07-21
+    /// a partir de GetSubstruct()/SUBSTRUCT_CASE en el código fuente real de pokeemerald
+    /// (src/pokemon.c) — la tabla anterior, escrita de memoria, tenía varias filas mal
+    /// transcritas (detectado porque 3 de 6 Pokémon de una partida real decodificaban a
+    /// especies imposibles pese a validar el checksum).</summary>
     private static readonly int[][] SubstructOrder =
     [
-        [0, 1, 2, 3], [0, 1, 3, 2], [0, 2, 1, 3], [0, 3, 1, 2], [0, 2, 3, 1], [0, 3, 2, 1],
-        [1, 0, 2, 3], [1, 0, 3, 2], [2, 0, 1, 3], [3, 0, 1, 2], [2, 0, 3, 1], [3, 0, 2, 1],
-        [1, 2, 0, 3], [1, 3, 0, 2], [2, 1, 0, 3], [3, 1, 0, 2], [2, 3, 0, 1], [3, 2, 0, 1],
-        [1, 2, 3, 0], [1, 3, 2, 0], [2, 1, 3, 0], [3, 1, 2, 0], [2, 3, 1, 0], [3, 2, 1, 0],
+        [0, 1, 2, 3], [0, 1, 3, 2], [0, 2, 1, 3], [0, 2, 3, 1], [0, 3, 1, 2], [0, 3, 2, 1],
+        [1, 0, 2, 3], [1, 0, 3, 2], [1, 2, 0, 3], [1, 2, 3, 0], [1, 3, 0, 2], [1, 3, 2, 0],
+        [2, 0, 1, 3], [2, 0, 3, 1], [2, 1, 0, 3], [2, 1, 3, 0], [2, 3, 0, 1], [2, 3, 1, 0],
+        [3, 0, 1, 2], [3, 0, 2, 1], [3, 1, 0, 2], [3, 1, 2, 0], [3, 2, 0, 1], [3, 2, 1, 0],
     ];
 
     public const int BoxPokemonSize = 80;
@@ -44,6 +48,19 @@ public static class Gen3Codec
         public required byte[][] Substructs { get; init; }
 
         public ushort Species => (ushort)(Substructs[0][0] | (Substructs[0][1] << 8));
+
+        /// <summary>Los hasta 4 movimientos actuales (0 = vacío) — Substructs[1] bytes 0-7 (u16
+        /// x4), ver BuildAttacksSubstruct. Para el menú "Fight" de batalla (el servidor no manda
+        /// movimientos/PP en battle_start: el cliente ya los tiene acá, de la RAM real).</summary>
+        public ushort[] MoveIds() => [
+            (ushort)(Substructs[1][0] | (Substructs[1][1] << 8)),
+            (ushort)(Substructs[1][2] | (Substructs[1][3] << 8)),
+            (ushort)(Substructs[1][4] | (Substructs[1][5] << 8)),
+            (ushort)(Substructs[1][6] | (Substructs[1][7] << 8)),
+        ];
+
+        /// <summary>PP actual de cada movimiento — Substructs[1] bytes 8-11 (u8 x4).</summary>
+        public byte[] PPs() => [Substructs[1][8], Substructs[1][9], Substructs[1][10], Substructs[1][11]];
     }
 
     /// <summary>Descifra los 80 bytes de un BoxPokemon (personality..checksum..data cifrada).
@@ -143,6 +160,121 @@ public static class Gen3Codec
         s[9] = friendship;
         s[10] = 0; s[11] = 0; // unknown/padding
         return s;
+    }
+
+    /// <summary>Substructura Attacks: hasta 4 movimientos (u16) + su PP actual (u8) — layout
+    /// confirmado contra struct PokemonSubstruct1 real (include/pokemon.h).</summary>
+    public static byte[] BuildAttacksSubstruct((ushort MoveId, byte Pp)[] moves)
+    {
+        if (moves.Length > 4) throw new ArgumentException("Máximo 4 movimientos.");
+        var s = new byte[12];
+        for (int i = 0; i < moves.Length; i++)
+        {
+            s[i * 2] = (byte)(moves[i].MoveId & 0xFF);
+            s[i * 2 + 1] = (byte)(moves[i].MoveId >> 8);
+            s[8 + i] = moves[i].Pp;
+        }
+        return s;
+    }
+
+    /// <summary>Substructura EVs/Condition — todo en cero para un Pokémon recién obtenido (sin
+    /// entrenar). Layout confirmado contra struct PokemonSubstruct2 real.</summary>
+    public static byte[] BuildEmptyEvsSubstruct() => new byte[12];
+
+    /// <summary>Substructura Misc (IVs, pokerus, dónde/cómo se obtuvo, habilidad, cintas) — IVs
+    /// en 0 y resto en blanco es una SIMPLIFICACIÓN deliberada (un Pokémon real tendría IVs
+    /// aleatorios); alcanza para que el Pokémon sea válido y jugable, no para imitar
+    /// exactamente cómo el juego genera un inicial. Layout confirmado contra struct
+    /// PokemonSubstruct3 real (include/pokemon.h) — hpIV..spDefenseIV son bitfields de 5 bits
+    /// cada uno empacados en el u32 de offset 4, todos en 0 alcanza con dejar esos 4 bytes en 0.</summary>
+    public static byte[] BuildEmptyMiscSubstruct() => new byte[12];
+
+    /// <summary>Todo lo necesario para armar un Pokémon nuevo de cero (ver BuildFullPartySlot).
+    /// Personality/OtId los genera quien llama (ej. al azar) — determinan la clave de cifrado y
+    /// el orden de substructuras, no hace falta que sean "reales" para que el Pokémon sea válido.</summary>
+    public readonly struct NewPokemonSpec
+    {
+        public required ushort Species { get; init; }
+        public required byte Level { get; init; }
+        public required uint Personality { get; init; }
+        public required uint OtId { get; init; }
+        public required string Nickname { get; init; }
+        public required string OtName { get; init; }
+        public required (ushort MoveId, byte Pp)[] Moves { get; init; }
+        public required BaseStats BaseStats { get; init; }
+    }
+
+    public readonly struct BaseStats
+    {
+        public required byte Hp { get; init; }
+        public required byte Attack { get; init; }
+        public required byte Defense { get; init; }
+        public required byte Speed { get; init; }
+        public required byte SpAttack { get; init; }
+        public required byte SpDefense { get; init; }
+    }
+
+    public readonly struct ComputedStats
+    {
+        public required ushort Hp { get; init; }
+        public required ushort Attack { get; init; }
+        public required ushort Defense { get; init; }
+        public required ushort Speed { get; init; }
+        public required ushort SpAttack { get; init; }
+        public required ushort SpDefense { get; init; }
+    }
+
+    /// <summary>Fórmulas de stats de Gen3 (idénticas en todas las generaciones 3-7, no son
+    /// específicas de esta ROM). IVs=0/EVs=0/naturaleza neutra — simplificación deliberada para
+    /// un Pokémon recién creado, ver BuildEmptyMiscSubstruct.</summary>
+    public static ComputedStats ComputeStatsAtLevel(BaseStats b, byte level)
+    {
+        ushort Other(byte baseStat) => (ushort)((2 * baseStat) * level / 100 + 5);
+        return new ComputedStats
+        {
+            Hp = (ushort)((2 * b.Hp) * level / 100 + level + 10),
+            Attack = Other(b.Attack),
+            Defense = Other(b.Defense),
+            Speed = Other(b.Speed),
+            SpAttack = Other(b.SpAttack),
+            SpDefense = Other(b.SpDefense),
+        };
+    }
+
+    /// <summary>Arma un slot de equipo completo (100 bytes: 80 de BoxPokemon cifrado + 20 de
+    /// estadísticas en claro — nivel, HP, ataque, etc., que NO forman parte del bloque cifrado,
+    /// ver struct Pokemon real en include/pokemon.h) listo para escribir directo en
+    /// SaveBlock1->playerParty[slot].</summary>
+    public static byte[] BuildFullPartySlot(NewPokemonSpec spec) => BuildFullPartySlot(
+        spec.Species, spec.Level, experience: 0, spec.Personality, spec.OtId,
+        spec.Nickname, spec.OtName, spec.Moves, spec.BaseStats);
+
+    public static byte[] BuildFullPartySlot(
+        ushort species, byte level, uint experience, uint personality, uint otId,
+        string nickname, string otName, (ushort MoveId, byte Pp)[] moves, BaseStats baseStats)
+    {
+        byte[] boxMon = EncryptBoxPokemon(personality, otId, nickname, otName,
+        [
+            BuildGrowthSubstruct(species, 0, experience, 70),
+            BuildAttacksSubstruct(moves),
+            BuildEmptyEvsSubstruct(),
+            BuildEmptyMiscSubstruct(),
+        ]);
+
+        var stats = ComputeStatsAtLevel(baseStats, level);
+        var result = new byte[100];
+        boxMon.CopyTo(result, 0);
+        // status(u32)@0x50 = 0 (sin efectos de estado)
+        result[0x54] = level;
+        result[0x55] = 0; // mail
+        WriteU16(result, 0x56, stats.Hp);
+        WriteU16(result, 0x58, stats.Hp); // maxHP = HP (recién obtenido, sin daño)
+        WriteU16(result, 0x5A, stats.Attack);
+        WriteU16(result, 0x5C, stats.Defense);
+        WriteU16(result, 0x5E, stats.Speed);
+        WriteU16(result, 0x60, stats.SpAttack);
+        WriteU16(result, 0x62, stats.SpDefense);
+        return result;
     }
 
     private static uint ReadU32(ReadOnlySpan<byte> b, int off) =>

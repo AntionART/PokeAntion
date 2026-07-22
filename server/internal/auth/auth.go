@@ -40,6 +40,11 @@ type AuthResult struct {
 	PosX        int    `json:"pos_x"`
 	PosY        int    `json:"pos_y"`
 	Color       string `json:"color"`
+	Money       int    `json:"money"`
+	// StarterSpecies es el species del Pokémon en el slot 0 del equipo (tabla `pokemon`, ver
+	// paquete internal/pokemon), o 0 (SPECIES_NONE) si todavía no tiene ninguno — derivado, no
+	// es una columna propia (evita tener dos fuentes de verdad para lo mismo).
+	StarterSpecies int `json:"starter_species"`
 }
 
 type sessionClaims struct {
@@ -123,6 +128,7 @@ func (s *Service) Register(username, email, password, romID, nickname string) (A
 	return AuthResult{
 		AccountID: accountID, CharacterID: characterID, Nickname: nickname,
 		MapID: startMap, PosX: startX, PosY: startY, Color: "default",
+		Money: 3000, StarterSpecies: 0,
 	}, nil
 }
 
@@ -163,11 +169,13 @@ func (s *Service) Login(username, password string) (AuthResult, error) {
 	}
 
 	var characterID, nickname, mapID, color string
-	var posX, posY int
+	var posX, posY, money, starterSpecies int
 	err = s.db.QueryRow(
-		`SELECT id, nickname, map_id, pos_x, pos_y, sprite_color FROM characters WHERE account_id = $1 LIMIT 1`,
+		`SELECT id, nickname, map_id, pos_x, pos_y, sprite_color, money,
+		        COALESCE((SELECT species_id FROM pokemon WHERE owner_char_id = characters.id AND location = 'team' AND team_slot = 0), 0)
+		 FROM characters WHERE account_id = $1 LIMIT 1`,
 		accountID,
-	).Scan(&characterID, &nickname, &mapID, &posX, &posY, &color)
+	).Scan(&characterID, &nickname, &mapID, &posX, &posY, &color, &money, &starterSpecies)
 	if err != nil {
 		return AuthResult{}, fmt.Errorf("cargando personaje: %w", err)
 	}
@@ -177,6 +185,7 @@ func (s *Service) Login(username, password string) (AuthResult, error) {
 	return AuthResult{
 		AccountID: accountID, CharacterID: characterID, Nickname: nickname,
 		MapID: mapID, PosX: posX, PosY: posY, Color: color,
+		Money: money, StarterSpecies: starterSpecies,
 	}, nil
 }
 
@@ -189,11 +198,13 @@ func (s *Service) LoginWithToken(tokenString string) (AuthResult, error) {
 	}
 
 	var nickname, mapID, color string
-	var posX, posY int
+	var posX, posY, money, starterSpecies int
 	err = s.db.QueryRow(
-		`SELECT nickname, map_id, pos_x, pos_y, sprite_color FROM characters WHERE id = $1 AND account_id = $2`,
+		`SELECT nickname, map_id, pos_x, pos_y, sprite_color, money,
+		        COALESCE((SELECT species_id FROM pokemon WHERE owner_char_id = characters.id AND location = 'team' AND team_slot = 0), 0)
+		 FROM characters WHERE id = $1 AND account_id = $2`,
 		characterID, accountID,
-	).Scan(&nickname, &mapID, &posX, &posY, &color)
+	).Scan(&nickname, &mapID, &posX, &posY, &color, &money, &starterSpecies)
 	if err == sql.ErrNoRows {
 		return AuthResult{}, ErrInvalidToken
 	}
@@ -204,5 +215,6 @@ func (s *Service) LoginWithToken(tokenString string) (AuthResult, error) {
 	return AuthResult{
 		AccountID: accountID, CharacterID: characterID, Nickname: nickname,
 		MapID: mapID, PosX: posX, PosY: posY, Color: color,
+		Money: money, StarterSpecies: starterSpecies,
 	}, nil
 }

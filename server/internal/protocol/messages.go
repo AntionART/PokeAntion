@@ -35,6 +35,12 @@ type LoginOKPayload struct {
 	// el cliente lo necesita para saber qué mostrar como seleccionado en el picker y para
 	// mandarlo él mismo en su primer "move" (ver world.AllowedSpriteColors).
 	Color string `json:"color"`
+	// Money y StarterSpecies son autoritativos del servidor, no del save de la ROM — el
+	// cliente los inyecta en la RAM del emulador al bootear (RomLoader.NewGameBootstrap), ver
+	// gen3_save_pointers memory. StarterSpecies=0 (SPECIES_NONE) significa que todavía no
+	// eligió inicial.
+	Money          int `json:"money"`
+	StarterSpecies int `json:"starter_species"`
 }
 
 type ErrorPayload struct {
@@ -165,6 +171,78 @@ type TradeSessionRefPayload struct {
 type TradeCancelledPayload struct {
 	TradeSessionID string `json:"trade_session_id"`
 	Reason         string `json:"reason"`
+}
+
+// ---- Batalla (PvP 1v1, ver server/internal/battlesession) ----
+
+type BattleChallengePayload struct {
+	TargetCharacterID string `json:"target_character_id"`
+}
+
+type BattleChallengeReceivedPayload struct {
+	BattleSessionID string `json:"battle_session_id"`
+	FromCharacterID string `json:"from_character_id"`
+	FromNickname    string `json:"from_nickname"`
+}
+
+// BattleSessionRefPayload es el payload compartido por battle_accept y battle_decline: ambos
+// solo necesitan identificar la sesión, igual que TradeSessionRefPayload.
+type BattleSessionRefPayload struct {
+	BattleSessionID string `json:"battle_session_id"`
+}
+
+type BattleCancelledPayload struct {
+	BattleSessionID string `json:"battle_session_id"`
+	Reason          string `json:"reason"`
+}
+
+type BattlePokemonPayload struct {
+	PokemonID string `json:"pokemon_id"`
+	SpeciesID int    `json:"species_id"`
+	Nickname  string `json:"nickname,omitempty"`
+	Level     int    `json:"level"`
+	CurrentHP int    `json:"current_hp"`
+	MaxHP     int    `json:"max_hp"`
+}
+
+// BattleStartPayload se manda a AMBOS participantes, cada uno con su propio par
+// yours/opponent (no un array indexado 0/1 que el cliente tendría que mapear a "quién soy yo").
+type BattleStartPayload struct {
+	BattleSessionID string               `json:"battle_session_id"`
+	Yours           BattlePokemonPayload `json:"yours"`
+	Opponent        BattlePokemonPayload `json:"opponent"`
+}
+
+type BattleActionPayload struct {
+	BattleSessionID string `json:"battle_session_id"`
+	MoveSlot        int    `json:"move_slot"` // índice 0-3 en los 4 movimientos del Pokémon activo
+}
+
+// BattleEventPayload es un paso del log de un turno (ver battlesession.TurnEvent) — Type es el
+// string del battle.EventType (damage|miss|faint|stat_change|no_pp), ActorCharacterID es quien
+// actuó (o quien recibió el stat_change/faint, ver battlesession.SubmitAction).
+type BattleEventPayload struct {
+	Type             string  `json:"type"`
+	ActorCharacterID string  `json:"actor_character_id"`
+	MoveID           int     `json:"move_id,omitempty"`
+	Damage           int     `json:"damage,omitempty"`
+	Effectiveness    float64 `json:"effectiveness,omitempty"`
+	Fainted          bool    `json:"fainted,omitempty"`
+}
+
+// BattleTurnResultPayload se manda a AMBOS participantes con el mismo log de eventos (ya en
+// términos de character_id, no de índice de Fighter) y el HP de cada uno tras el turno.
+type BattleTurnResultPayload struct {
+	BattleSessionID string               `json:"battle_session_id"`
+	Events          []BattleEventPayload `json:"events"`
+	YourHP          int                  `json:"your_hp"`
+	OpponentHP      int                  `json:"opponent_hp"`
+}
+
+type BattleEndPayload struct {
+	BattleSessionID   string `json:"battle_session_id"`
+	WinnerCharacterID string `json:"winner_character_id"`
+	YouWon            bool   `json:"you_won"`
 }
 
 // ---- Amigos ----
@@ -312,8 +390,8 @@ type GuildMemberPayload struct {
 }
 
 type GuildUpdatePayload struct {
-	GuildID string                `json:"guild_id"`
-	Name    string                `json:"name"`
+	GuildID string               `json:"guild_id"`
+	Name    string               `json:"name"`
 	Members []GuildMemberPayload `json:"members"`
 }
 

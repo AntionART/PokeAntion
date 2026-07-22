@@ -28,6 +28,12 @@ internal sealed class FontAtlas
     public int Height { get; }
     public float LineHeightPx { get; }
 
+    /// <summary>UV de una celda extra reservada, rellena de blanco opaco sólido (no un
+    /// glifo) — permite a Renderer.AddRect dibujar rectángulos de color reusando el mismo
+    /// pipeline de texto (mismo vertex format, mismo shader), sin necesitar una textura ni
+    /// shader aparte solo para rectángulos.</summary>
+    public Glyph Solid { get; }
+
     private readonly Dictionary<char, Glyph> _glyphs = new();
 
     public FontAtlas(string fontFamily = "Consolas", float sizePt = 16f)
@@ -56,8 +62,11 @@ internal sealed class FontAtlas
             maxSize = new SizeF(MathF.Ceiling(maxW) + 2, MathF.Ceiling(maxH) + 2);
         }
 
-        int cols = (int)Math.Ceiling(Math.Sqrt(Charset.Length));
-        int rows = (int)Math.Ceiling(Charset.Length / (double)cols);
+        // +1 celda reservada para Solid (rectángulo blanco opaco, ver comentario en la
+        // propiedad) — se ubica siempre en el índice Charset.Length, después de todos los glifos.
+        int cellCount = Charset.Length + 1;
+        int cols = (int)Math.Ceiling(Math.Sqrt(cellCount));
+        int rows = (int)Math.Ceiling(cellCount / (double)cols);
         int cellW = (int)maxSize.Width;
         int cellH = (int)maxSize.Height;
         Width = cols * cellW;
@@ -80,6 +89,15 @@ internal sealed class FontAtlas
                     x / Width, y / Height, (x + cellW) / Width, (y + cellH) / Height,
                     monospaceAdvance, cellW, cellH);
             }
+
+            int solidCol = Charset.Length % cols, solidRow = Charset.Length / cols;
+            float sx = solidCol * cellW, sy = solidRow * cellH;
+            g.FillRectangle(brush, sx, sy, cellW, cellH);
+            // UVs recortados 1px hacia adentro: evita que el sampler agarre bordes
+            // transparentes vecinos por bilinear filtering cuando se escala un rectángulo grande.
+            Solid = new Glyph(
+                (sx + 1) / Width, (sy + 1) / Height, (sx + cellW - 1) / Width, (sy + cellH - 1) / Height,
+                cellW, cellW, cellH);
         }
 
         PixelsBgra = new byte[Width * Height * 4];

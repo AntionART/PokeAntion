@@ -129,6 +129,17 @@ internal sealed class Renderer : IDisposable
     private ID3D11ShaderResourceView? _spriteView;
     private int _spriteTexWidth, _spriteTexHeight;
 
+    // Fase battle-4: sprites de Pokémon (front/back de "yours"/"opponent" en batalla) —
+    // a diferencia del sprite único de overworld (_spriteView, un solo jugador reusado con
+    // tinte), acá conviven varias texturas DISTINTAS a la vez (especies distintas), cacheadas
+    // por clave (ver ClientApp.Battle.BattleScreen.SpriteKey) para no volver a subir el mismo
+    // PNG decodificado en cada frame. Reusa el mismo pipeline de texto/sprite (_textInputLayout/
+    // _textVertexShader/_spritePixelShader) en coordenadas de píxel de VENTANA (como AddRect/
+    // AddText), no de espacio GBA (como SetRemoteSprites).
+    private readonly Dictionary<string, (ID3D11Texture2D Tex, ID3D11ShaderResourceView View, int W, int H)> _uiTextures = new();
+    private readonly List<(string Key, TextVertex[] Verts)> _uiSprites = new();
+    private readonly ID3D11Buffer _uiSpriteVertexBuffer;
+
     private readonly FontAtlas _fontAtlas;
     private readonly ID3D11Texture2D _fontTexture;
     private readonly ID3D11ShaderResourceView _fontView;
@@ -246,6 +257,15 @@ internal sealed class Renderer : IDisposable
         _textVertexBuffer = _device.CreateBuffer(textBufDesc);
 
         _alphaBlendState = _device.CreateBlendState(BlendDescription.NonPremultiplied);
+
+        BufferDescription uiSpriteBufDesc = new()
+        {
+            ByteWidth = (uint)(Marshal.SizeOf<TextVertex>() * VerticesPerSprite),
+            Usage = ResourceUsage.Dynamic,
+            BindFlags = BindFlags.VertexBuffer,
+            CPUAccessFlags = CpuAccessFlags.Write,
+        };
+        _uiSpriteVertexBuffer = _device.CreateBuffer(uiSpriteBufDesc);
     }
 
     /// <summary>
@@ -281,6 +301,29 @@ internal sealed class Renderer : IDisposable
         }
     }
 
+    /// <summary>
+    /// Encola un rectángulo relleno de color sólido (fondo de panel/tarjeta, badge, barra de
+    /// HP, etc.), en las mismas coordenadas de píxel de ventana que AddText. Reusa el mismo
+    /// vertex buffer/shader que el texto (sampleando la celda "Solid" reservada del atlas,
+    /// ver FontAtlas) — no hace falta un pipeline aparte solo para rectángulos.
+    /// </summary>
+    public void AddRect(float xPx, float yPx, float wPx, float hPx, float r, float g, float b, float a = 1f)
+    {
+        Glyph solid = _fontAtlas.Solid;
+        float x0 = ToNdcX(xPx, _windowWidth);
+        float x1 = ToNdcX(xPx + wPx, _windowWidth);
+        float y0 = ToNdcY(yPx, _windowHeight);
+        float y1 = ToNdcY(yPx + hPx, _windowHeight);
+
+        if (_textVertices.Count + VerticesPerChar > MaxTextChars * VerticesPerChar) return;
+        _textVertices.Add(new TextVertex { X = x0, Y = y0, U = solid.U0, V = solid.V0, R = r, G = g, B = b, A = a });
+        _textVertices.Add(new TextVertex { X = x1, Y = y0, U = solid.U1, V = solid.V0, R = r, G = g, B = b, A = a });
+        _textVertices.Add(new TextVertex { X = x0, Y = y1, U = solid.U0, V = solid.V1, R = r, G = g, B = b, A = a });
+        _textVertices.Add(new TextVertex { X = x1, Y = y0, U = solid.U1, V = solid.V0, R = r, G = g, B = b, A = a });
+        _textVertices.Add(new TextVertex { X = x1, Y = y1, U = solid.U1, V = solid.V1, R = r, G = g, B = b, A = a });
+        _textVertices.Add(new TextVertex { X = x0, Y = y1, U = solid.U0, V = solid.V1, R = r, G = g, B = b, A = a });
+    }
+
     /// <summary>Alto de línea del atlas actual, en píxeles de ventana (para apilar líneas de chat).</summary>
     public float TextLineHeight => _fontAtlas.LineHeightPx;
 
@@ -292,7 +335,64 @@ internal sealed class Renderer : IDisposable
         return w;
     }
 
-    public void ClearText() => _textVertices.Clear();
+    /// <summary>Limpia texto/rects Y sprites de UI encolados (ver _uiSprites) — se llama una
+    /// sola vez al principio de cada frame, antes de que el frame vuelva a declarar todo lo que
+    /// quiere dibujar (mismo ciclo "declarar aditivo, Render() al final" que AddText/AddRect).</summary>
+    public void ClearText()
+    {
+        _textVertices.Clear();
+        _uiSprites.Clear();
+    }
+
+    /// <summary>Sube (si hace falta) una textura de UI identificada por una clave estable (ver
+    /// ClientApp.Battle.BattleScreen.SpriteKey) — a diferencia de UploadSpriteTexture (un solo
+    /// slot, reusado con tinte para todo jugador remoto), acá conviven varias texturas DISTINTAS
+    /// simultáneamente (especies distintas en batalla). No hace nada si la clave ya está subida
+    /// (asume contenido inmutable por clave: una especie siempre decodifica al mismo PNG).</summary>
+    public unsafe void EnsureUiTexture(string key, byte[] rgba, int width, int height)
+    {
+        if (_uiTextures.ContainsKey(key)) return;
+
+        Texture2DDescription desc = new()
+        {
+            Width = (uint)width,
+            Height = (uint)height,
+            MipLevels = 1,
+            ArraySize = 1,
+            Format = Format.R8G8B8A8_UNorm,
+            SampleDescription = SampleDescription.Default,
+            Usage = ResourceUsage.Immutable,
+            BindFlags = BindFlags.ShaderResource,
+        };
+        fixed (byte* p = rgba)
+        {
+            var initData = new SubresourceData { DataPointer = (IntPtr)p, RowPitch = (uint)(width * 4) };
+            ID3D11Texture2D tex = _device.CreateTexture2D(desc, initData);
+            ID3D11ShaderResourceView view = _device.CreateShaderResourceView(tex);
+            _uiTextures[key] = (tex, view, width, height);
+        }
+    }
+
+    public bool HasUiTexture(string key) => _uiTextures.ContainsKey(key);
+
+    /// <summary>Encola un sprite de UI (textura completa, sin recorte de UV) en coordenadas de
+    /// píxel de ventana, mismo espacio que AddRect/AddText. No hace nada si la clave no fue
+    /// subida todavía con EnsureUiTexture (el llamador decide qué mostrar mientras tanto, ej.
+    /// nada, o un AddRect placeholder).</summary>
+    public void AddSprite(string key, float xPx, float yPx, float wPx, float hPx, float r = 1f, float g = 1f, float b = 1f, float a = 1f)
+    {
+        if (!_uiTextures.ContainsKey(key)) return;
+        float x0 = ToNdcX(xPx, _windowWidth), x1 = ToNdcX(xPx + wPx, _windowWidth);
+        float y0 = ToNdcY(yPx, _windowHeight), y1 = ToNdcY(yPx + hPx, _windowHeight);
+        _uiSprites.Add((key, [
+            new TextVertex { X = x0, Y = y0, U = 0, V = 0, R = r, G = g, B = b, A = a },
+            new TextVertex { X = x1, Y = y0, U = 1, V = 0, R = r, G = g, B = b, A = a },
+            new TextVertex { X = x0, Y = y1, U = 0, V = 1, R = r, G = g, B = b, A = a },
+            new TextVertex { X = x1, Y = y0, U = 1, V = 0, R = r, G = g, B = b, A = a },
+            new TextVertex { X = x1, Y = y1, U = 1, V = 1, R = r, G = g, B = b, A = a },
+            new TextVertex { X = x0, Y = y1, U = 0, V = 1, R = r, G = g, B = b, A = a },
+        ]));
+    }
 
     /// <summary>
     /// Sube (o reemplaza) la textura de sprite usada para dibujar jugadores remotos — hoy una
@@ -492,10 +592,50 @@ internal sealed class Renderer : IDisposable
             _context.Draw((uint)_spriteVertices.Count, 0);
         }
 
+        // Los rects/texto (incluye el fondo semitransparente de BattleScreen) van ANTES que los
+        // sprites de UI: van todos en un solo Draw() cada pasada, así que el orden ENTRE pasadas
+        // importa aunque no haya depth test — invertido, un fondo de pantalla completa quedaba
+        // pintado ENCIMA de los sprites recién dibujados, oscureciéndolos (bug real, encontrado
+        // en vivo: Torchic/Mudkip salían casi negros en la captura de --debug-battle).
         DrawQueuedText();
+        DrawQueuedUiSprites();
 
         _context.OMSetBlendState(null);
         _swapChain.Present(1, PresentFlags.None);
+    }
+
+    /// <summary>Un Draw() por sprite (no un batch): en la práctica hay a lo sumo un puñado de
+    /// sprites de UI en pantalla a la vez (2 en batalla: yours/opponent), así que el costo de
+    /// bindear una textura distinta por Draw es irrelevante — batchear exigiría texture arrays
+    /// o un atlas compartido, complejidad que no se justifica para este volumen.</summary>
+    private unsafe void DrawQueuedUiSprites()
+    {
+        if (_uiSprites.Count == 0) return;
+
+        _context.IASetInputLayout(_textInputLayout);
+        _context.IASetVertexBuffer(0, _uiSpriteVertexBuffer, (uint)Marshal.SizeOf<TextVertex>());
+        _context.VSSetShader(_textVertexShader);
+        _context.PSSetShader(_spritePixelShader);
+        _context.PSSetSampler(0, _sampler);
+
+        foreach (var (key, verts) in _uiSprites)
+        {
+            if (!_uiTextures.TryGetValue(key, out var tex)) continue;
+
+            MappedSubresource mapped = _context.Map(_uiSpriteVertexBuffer, 0, MapMode.WriteDiscard);
+            try
+            {
+                fixed (TextVertex* src = verts)
+                    Buffer.MemoryCopy(src, (void*)mapped.DataPointer, mapped.RowPitch, (nuint)(verts.Length * Marshal.SizeOf<TextVertex>()));
+            }
+            finally
+            {
+                _context.Unmap(_uiSpriteVertexBuffer, 0);
+            }
+
+            _context.PSSetShaderResource(0, tex.View);
+            _context.Draw((uint)verts.Length, 0);
+        }
     }
 
     private unsafe void DrawQueuedText()
@@ -594,6 +734,8 @@ internal sealed class Renderer : IDisposable
 
     public void Dispose()
     {
+        foreach (var tex in _uiTextures.Values) { tex.View.Dispose(); tex.Tex.Dispose(); }
+        _uiSpriteVertexBuffer.Dispose();
         _sourceView?.Dispose();
         _sourceTexture?.Dispose();
         _spriteView?.Dispose();

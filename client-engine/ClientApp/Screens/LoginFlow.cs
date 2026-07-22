@@ -29,7 +29,21 @@ public sealed record GameSession(
 /// </summary>
 internal sealed class LoginFlow
 {
-    private enum Screen { Login, Register, RomSelect, Error }
+    private enum Screen { Login, Register, PickStarter, RomSelect, Error }
+
+    // Los 3 iniciales de Emerald (mismos IDs que RomLoader.StarterCatalog/
+    // server/internal/pokemon/starters.go) — sin esto, una cuenta creada por la UI real nunca
+    // termina con un Pokémon en team_slot 0 (el servidor solo llama pokemon.AddStarter si
+    // starter_species != 0, ver main.go handleRegister), y sin eso no se puede pelear/comerciar.
+    // Bug real encontrado: esta pantalla existía desde antes de que el sistema de batalla
+    // tuviera sentido, y nunca se actualizó para mandar starter_species — toda cuenta creada
+    // por el flujo real (a diferencia de --dev-boot, que no pasa por acá) quedaba sin equipo.
+    private static readonly (ushort Species, string Name)[] StarterChoices =
+    [
+        (RomLoader.StarterCatalog.SpeciesTreecko, "TREECKO"),
+        (RomLoader.StarterCatalog.SpeciesTorchic, "TORCHIC"),
+        (RomLoader.StarterCatalog.SpeciesMudkip, "MUDKIP"),
+    ];
 
     private const int VK_UP = 0x26, VK_DOWN = 0x28, VK_RETURN = 0x0D, VK_TAB = 0x09, VK_ESCAPE = 0x1B, VK_F4 = 0x73;
     private static readonly TimeSpan LoginTimeout = TimeSpan.FromSeconds(6);
@@ -48,6 +62,7 @@ internal sealed class LoginFlow
     private readonly TextField _regPass = new("Contraseña", masked: true);
     private readonly TextField _regNick = new("Apodo");
     private int _focus;
+    private int _starterIndex;
     private int _romIndex;
     private string _status = "";
     private bool _statusIsError;
@@ -128,6 +143,11 @@ internal sealed class LoginFlow
                 _status = "";
                 chars.Clear();
             }
+            if (escapeNow && !prevEscape && _screen == Screen.PickStarter)
+            {
+                _screen = Screen.Register;
+                _status = "";
+            }
 
             TextField[] fields = ActiveFields();
             if (tabNow && !prevTab && fields.Length > 0)
@@ -146,6 +166,11 @@ internal sealed class LoginFlow
                 if (upNow && !prevUp) _romIndex = (_romIndex - 1 + _catalog.Count) % _catalog.Count;
                 if (downNow && !prevDown) _romIndex = (_romIndex + 1) % _catalog.Count;
             }
+            if (_screen == Screen.PickStarter)
+            {
+                if (upNow && !prevUp) _starterIndex = (_starterIndex - 1 + StarterChoices.Length) % StarterChoices.Length;
+                if (downNow && !prevDown) _starterIndex = (_starterIndex + 1) % StarterChoices.Length;
+            }
 
             if (returnNow && !prevReturn)
             {
@@ -156,7 +181,17 @@ internal sealed class LoginFlow
                         if (ws != null) TrySubmitLogin(ws);
                         break;
                     case Screen.Register:
-                        TrySubmitRegister();
+                        if (_regUser.Value.Length == 0 || _regPass.Value.Length == 0)
+                        {
+                            SetError("Completá al menos usuario y contraseña.");
+                            break;
+                        }
+                        _status = "";
+                        _starterIndex = 0;
+                        _screen = Screen.PickStarter;
+                        break;
+                    case Screen.PickStarter:
+                        TrySubmitRegister(StarterChoices[_starterIndex].Species);
                         break;
                     case Screen.RomSelect:
                         if (ws != null && _pendingLogin != null)
@@ -209,7 +244,7 @@ internal sealed class LoginFlow
     {
         Screen.Login => [_loginUser, _loginPass],
         Screen.Register => [_regUser, _regEmail, _regPass, _regNick],
-        _ => [],
+        _ => [], // PickStarter/RomSelect navegan con flechas, no con campos de texto
     };
 
     private WebSocketClient? TryConnect()
@@ -267,14 +302,8 @@ internal sealed class LoginFlow
         _romIndex = 0;
     }
 
-    private void TrySubmitRegister()
+    private void TrySubmitRegister(ushort starterSpecies)
     {
-        if (_regUser.Value.Length == 0 || _regPass.Value.Length == 0)
-        {
-            SetError("Completá al menos usuario y contraseña.");
-            return;
-        }
-
         _status = "Creando cuenta...";
         _statusIsError = false;
         _renderer.ClearText();
@@ -291,6 +320,7 @@ internal sealed class LoginFlow
                 username = _regUser.Value, email, password = _regPass.Value,
                 rom_id = _catalog.Count > 0 ? _catalog[0].RomId : "",
                 nickname,
+                starter_species = (int)starterSpecies,
             };
             var response = http.PostAsJsonAsync($"{_serverHttp}/register", body).GetAwaiter().GetResult();
             if (response.IsSuccessStatusCode)
@@ -424,7 +454,21 @@ internal sealed class LoginFlow
                 DrawField(_regPass, X, ref y, focusIndex: 2);
                 DrawField(_regNick, X, ref y, focusIndex: 3);
                 y += lineH * 0.5f;
-                _renderer.AddText("Enter: crear cuenta   Tab: cambiar de campo   F4/Esc: volver a iniciar sesión", X, y, 0.7f, 0.7f, 0.7f, 0.8f);
+                _renderer.AddText("Enter: continuar (elegir inicial)   Tab: cambiar de campo   F4/Esc: volver a iniciar sesión", X, y, 0.7f, 0.7f, 0.7f, 0.8f);
+                break;
+
+            case Screen.PickStarter:
+                _renderer.AddText("Elegí tu Pokémon inicial:", X, y, 1f, 1f, 1f, 0.9f); y += lineH * 1.5f;
+                for (int i = 0; i < StarterChoices.Length; i++)
+                {
+                    bool sel = i == _starterIndex;
+                    string prefix = sel ? "> " : "  ";
+                    (float r, float g, float b) = sel ? (0.4f, 1f, 0.4f) : (0.8f, 0.8f, 0.8f);
+                    _renderer.AddText(prefix + StarterChoices[i].Name, X, y, r, g, b, 1f);
+                    y += lineH;
+                }
+                y += lineH * 0.5f;
+                _renderer.AddText("Arriba/Abajo: elegir   Enter: confirmar y crear cuenta   Escape: volver", X, y, 0.7f, 0.7f, 0.7f, 0.8f);
                 break;
 
             case Screen.RomSelect:

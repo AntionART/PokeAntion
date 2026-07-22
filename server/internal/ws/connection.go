@@ -47,8 +47,10 @@ type AuthResult struct {
 	SpriteID     string
 	MapID        string
 	X, Y         int
-	SessionToken string
-	Color        string
+	SessionToken   string
+	Color          string
+	Money          int
+	StarterSpecies int
 }
 
 // ServeWS hace el upgrade HTTP->WebSocket, autentica la primera petición (`login`)
@@ -104,6 +106,7 @@ func ServeWS(hub *Hub, router Router, authenticate func(protocol.LoginPayload) (
 		okEnv, _ := protocol.NewEnvelope("login_ok", protocol.LoginOKPayload{
 			AccountID: result.AccountID, CharacterID: result.CharacterID, SessionToken: result.SessionToken,
 			MapID: result.MapID, PosX: result.X, PosY: result.Y, Color: result.Color,
+			Money: result.Money, StarterSpecies: result.StarterSpecies,
 		})
 		_ = conn.WriteJSON(okEnv)
 

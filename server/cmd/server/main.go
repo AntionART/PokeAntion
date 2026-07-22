@@ -11,11 +11,13 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"pokemon-online/server/internal/auth"
+	"pokemon-online/server/internal/battlesession"
 	"pokemon-online/server/internal/character"
 	"pokemon-online/server/internal/chat"
 	"pokemon-online/server/internal/config"
 	"pokemon-online/server/internal/db"
 	"pokemon-online/server/internal/market"
+	"pokemon-online/server/internal/pokemon"
 	"pokemon-online/server/internal/protocol"
 	"pokemon-online/server/internal/ratelimit"
 	"pokemon-online/server/internal/social"
@@ -63,10 +65,12 @@ func main() {
 	marketSvc := market.NewService(database)
 	guildSvc := social.NewGuildService(database)
 	characterSvc := character.NewService(database)
+	pokemonSvc := pokemon.NewService(database)
+	battleSvc := battlesession.NewService(pokemonSvc)
 	lookup := world.NewHubLookup(hub)
 	guildLookup := world.NewGuildLookup(guildSvc)
 	chatSvc := chat.NewService(lookup, hub, chatLimiter, guildLookup)
-	router := world.NewRouter(hub, chatSvc, tradeSvc, friendsSvc, partySvc, marketSvc, guildSvc, characterSvc)
+	router := world.NewRouter(hub, chatSvc, tradeSvc, friendsSvc, partySvc, marketSvc, guildSvc, characterSvc, battleSvc)
 
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
@@ -98,11 +102,12 @@ func main() {
 			Nickname: result.Nickname, SpriteID: "default",
 			MapID: result.MapID, X: result.PosX, Y: result.PosY,
 			SessionToken: token, Color: result.Color,
+			Money: result.Money, StarterSpecies: result.StarterSpecies,
 		}, nil
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/register", handleRegister(authSvc))
+	mux.HandleFunc("/register", handleRegister(authSvc, pokemonSvc))
 	mux.HandleFunc("/ws", ws.ServeWS(hub, router, authenticate))
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -122,9 +127,13 @@ type registerRequest struct {
 	Password string `json:"password"`
 	RomID    string `json:"rom_id"`
 	Nickname string `json:"nickname"`
+	// StarterSpecies es opcional (estilo PokeMMO: elegir el inicial al crear personaje, ver
+	// pokemon.StarterCatalog para los válidos). Si se omite o no es uno de los 3 iniciales
+	// válidos, el personaje queda sin equipo — puede elegirlo después por otra vía.
+	StarterSpecies int `json:"starter_species"`
 }
 
-func handleRegister(authSvc *auth.Service) http.HandlerFunc {
+func handleRegister(authSvc *auth.Service, pokemonSvc *pokemon.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -141,6 +150,15 @@ func handleRegister(authSvc *auth.Service) http.HandlerFunc {
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 			return
 		}
+
+		if req.StarterSpecies != 0 {
+			if starter, err := pokemonSvc.AddStarter(result.CharacterID, req.StarterSpecies); err != nil {
+				slog.Warn("no se pudo crear el inicial elegido", "component", "register", "error", err)
+			} else {
+				result.StarterSpecies = starter.Species
+			}
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(result)
 	}
