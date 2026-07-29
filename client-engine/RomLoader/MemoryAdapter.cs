@@ -42,6 +42,7 @@ public sealed class MemoryMapConfig
     [JsonPropertyName("rom_path")] public string? RomPath { get; set; }
     [JsonPropertyName("player")] public PlayerConfig Player { get; set; } = new();
     [JsonPropertyName("save_block_pointers")] public SaveBlockPointersConfig? SaveBlockPointers { get; set; }
+    [JsonPropertyName("wild_battle_signal")] public WildBattleSignalConfig? WildBattleSignal { get; set; }
 
     public sealed class PlayerConfig
     {
@@ -66,12 +67,27 @@ public sealed class MemoryMapConfig
         [JsonPropertyName("save_block1_pointer_address")] public string? SaveBlock1PointerAddress { get; set; }
         [JsonPropertyName("save_block2_pointer_address")] public string? SaveBlock2PointerAddress { get; set; }
         [JsonPropertyName("pos_offset")] public string? PosOffset { get; set; }
+        [JsonPropertyName("map_group_offset")] public string? MapGroupOffset { get; set; }
         [JsonPropertyName("map_num_offset")] public string? MapNumOffset { get; set; }
         [JsonPropertyName("player_party_offset")] public string? PlayerPartyOffset { get; set; }
         [JsonPropertyName("player_party_count_offset")] public string? PlayerPartyCountOffset { get; set; }
         [JsonPropertyName("money_offset")] public string? MoneyOffset { get; set; }
         [JsonPropertyName("flags_offset")] public string? FlagsOffset { get; set; }
         [JsonPropertyName("encryption_key_offset")] public string? EncryptionKeyOffset { get; set; }
+    }
+
+    /// <summary>
+    /// gMain.callback1/callback2 (struct Main, include/main.h) — callback1 es el dispatcher de
+    /// frame, constante sea cual sea la pantalla activa; callback2 es el puntero de estado real
+    /// (distinto valor en overworld vs. en una pelea nativa). Confirmado en vivo 2026-07-28
+    /// diffeando IWRAM completo entre caminar y una pelea salvaje real — ver
+    /// memory-maps/emerald_es.json wild_battle_signal._validation para la metodología.
+    /// </summary>
+    public sealed class WildBattleSignalConfig
+    {
+        [JsonPropertyName("gmain_callback1_address")] public string? Callback1Address { get; set; }
+        [JsonPropertyName("gmain_callback2_address")] public string? Callback2Address { get; set; }
+        [JsonPropertyName("overworld_callback2_value")] public string? OverworldCallback2Value { get; set; }
     }
 
     public static MemoryMapConfig LoadFromFile(string path)
@@ -108,6 +124,18 @@ public interface IMemoryAdapter
     /// todavía no expone EWRAM.
     /// </summary>
     byte GetMapNumber();
+
+    /// <summary>
+    /// (mapGroup, mapNum) reales de pokeemerald (struct WarpData en SaveBlock1->location, ver
+    /// memory-maps/*.json save_block_pointers.map_group_offset) — a diferencia de
+    /// GetMapNumber() (un byte crudo, solo sirve para comparar por igualdad), este par SÍ se
+    /// puede cruzar con data/pokemon/maps.json para saber el mapa real ("MAP_ROUTE101") y así
+    /// consultar su tabla de encuentros salvajes. Devuelve null si el memory-map no define
+    /// map_group_offset (ROM todavía no migrada a este mecanismo) — a diferencia de
+    /// GetMapNumber(), no lanza excepción: esta es una capacidad nueva y opcional, no algo que
+    /// el resto del motor ya asuma que existe.
+    /// </summary>
+    (byte Group, byte Num)? GetMapGroupAndNum();
 
     /// <summary>
     /// De todas las entradas de OAM visibles, encuentra cuál es el sprite del PROPIO jugador
@@ -156,6 +184,16 @@ public interface IMemoryAdapter
     /// save_block_pointers/player_party_offset.
     /// </summary>
     void SetPartyPokemon(int slot, Gen3Codec.NewPokemonSpec spec);
+
+    /// <summary>
+    /// true si gMain.callback2 ya no es el valor de overworld conocido (ver
+    /// memory-maps/*.json wild_battle_signal) — la señal de "arrancó algo que no es el mapa
+    /// normal" (pelea salvaje nativa, la más común, pero también cualquier otra pantalla que
+    /// cambie el callback2 — no distingue todavía entre esos casos, ver aviso de
+    /// wild_battle_signal._validation). Devuelve null si el memory-map no define
+    /// wild_battle_signal.
+    /// </summary>
+    bool? IsCallback2AwayFromOverworld();
 }
 
 public sealed class GbaMemoryAdapter : IMemoryAdapter
@@ -208,6 +246,18 @@ public sealed class GbaMemoryAdapter : IMemoryAdapter
         }
 
         return _bus.ReadU8(ParseAddress(_config.Player.MapNumberAddress));
+    }
+
+    public (byte Group, byte Num)? GetMapGroupAndNum()
+    {
+        var sb = _config.SaveBlockPointers;
+        if (sb?.SaveBlock1PointerAddress == null || sb.MapGroupOffset == null || sb.MapNumOffset == null)
+            return null;
+
+        uint baseAddr = ResolvePointer(sb.SaveBlock1PointerAddress);
+        byte group = _bus.ReadU8(baseAddr + ParseAddress(sb.MapGroupOffset));
+        byte num = _bus.ReadU8(baseAddr + ParseAddress(sb.MapNumOffset));
+        return (group, num);
     }
 
     public OamEntry? FindPlayerSprite(IReadOnlyList<OamEntry> oamEntries)
@@ -320,6 +370,34 @@ public sealed class GbaMemoryAdapter : IMemoryAdapter
         byte count = _bus.ReadU8(saveBlock1 + ParseAddress(sb.PlayerPartyCountOffset));
         if (slot >= count)
             _bus.WriteU8(saveBlock1 + ParseAddress(sb.PlayerPartyCountOffset), (byte)(slot + 1));
+    }
+
+    public bool? IsCallback2AwayFromOverworld()
+    {
+        var wb = _config.WildBattleSignal;
+        if (wb?.Callback2Address is null || wb.OverworldCallback2Value is null) return null;
+
+        uint current = _bus.ReadU32(ParseAddress(wb.Callback2Address));
+        return current != ParseAddress(wb.OverworldCallback2Value);
+    }
+
+    /// <summary>Escribe gSaveBlock1Ptr->vars[varId - VARS_START] (VARS_START=0x4000, ver
+    /// include/constants/vars.h). El array "vars" vive en SaveBlock1 offset 0x139C (ver
+    /// include/global.h struct SaveBlock1) — offset de struct compilado, no depende de la
+    /// ROM/región (mismo layout confirmado ES/US, ver map_group_offset en memory-maps). Uso de
+    /// diagnóstico: permite saltar gates de historia (ej. VAR_LITTLEROOT_TOWN_STATE) para poder
+    /// llegar a zonas de juego real sin rejugar la intro completa cada vez.</summary>
+    private const uint VarsArrayOffset = 0x139C;
+    private const int VarsStart = 0x4000;
+
+    public void SetGameVar(int varId, ushort value)
+    {
+        var sb = _config.SaveBlockPointers;
+        if (sb?.SaveBlock1PointerAddress is null) return;
+
+        uint saveBlock1 = ResolvePointer(sb.SaveBlock1PointerAddress);
+        uint addr = saveBlock1 + VarsArrayOffset + (uint)((varId - VarsStart) * 2);
+        _bus.WriteU16(addr, value);
     }
 
     /// <summary>Lee el puntero VIVO desde su ranura fija de IWRAM — nunca cachear el resultado

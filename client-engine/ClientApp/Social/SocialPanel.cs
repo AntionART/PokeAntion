@@ -24,8 +24,8 @@ namespace ClientApp.Social;
 /// </summary>
 internal sealed class SocialPanel
 {
-    private enum Tab { Friends, Party, Trade, Battle, Market, Guild, Appearance }
-    private const int TabCount = 7;
+    private enum Tab { Friends, Party, Trade, Battle, Market, Guild, Appearance, Shop }
+    private const int TabCount = 8;
 
     private const int VK_F5 = 0x74;
     private const int VK_LEFT = 0x25, VK_RIGHT = 0x27, VK_UP = 0x26, VK_DOWN = 0x28;
@@ -102,6 +102,11 @@ internal sealed class SocialPanel
     private readonly List<(string GuildId, string GuildName, string FromCharacterId, string FromNickname)> _pendingGuildInvites = new();
     private bool _creatingGuild; // sub-modo: escribiendo el nombre del gremio a fundar
     private readonly StringBuilder _guildNameInput = new();
+
+    // ---- Tienda (panel simple siempre accesible — no hay NPC/edificio de Pokemart todavía,
+    // ver protocol.ShopCatalogPayload/BuyItemPayload). Precio SIEMPRE viene del servidor
+    // (inventory.Catalog), nunca hardcodeado acá — así nunca puede desincronizarse. ----
+    private List<ShopItemPayload> _shopCatalog = new();
 
     private bool _prevF5, _prevLeft, _prevRight, _prevUp, _prevDown, _prevReturn, _prevBack, _prevEscape, _prevAddFriend, _prevC;
 
@@ -262,6 +267,20 @@ internal sealed class SocialPanel
                 }
                 break;
 
+            case "shop_catalog":
+                var catalog = payload.Deserialize<ShopCatalogPayload>();
+                if (catalog != null) _shopCatalog = new List<ShopItemPayload>(catalog.Items);
+                break;
+            case "buy_result":
+                var bought = payload.Deserialize<BuyResultPayload>();
+                if (bought != null)
+                {
+                    string name = _shopCatalog.Find(i => i.ItemId == bought.ItemId)?.Name ?? $"#{bought.ItemId}";
+                    _status = $"Compraste {bought.Quantity}x {name} por {bought.TotalCost} (te quedan {bought.NewMoney}).";
+                    _statusIsError = false;
+                }
+                break;
+
             case "error":
                 var err = payload.Deserialize<ErrorPayload>();
                 if (err != null) { _status = err.Message; _statusIsError = true; }
@@ -417,6 +436,7 @@ internal sealed class SocialPanel
         if (_tab == Tab.Friends) _ws.SendAsync("friend_list", new { }).GetAwaiter().GetResult();
         else if (_tab == Tab.Market) RefreshMarket();
         else if (_tab == Tab.Guild) _ws.SendAsync("guild_info", new { }).GetAwaiter().GetResult();
+        else if (_tab == Tab.Shop) _ws.SendAsync("shop_catalog_request", new { }).GetAwaiter().GetResult();
     }
 
     private void RefreshMarket()
@@ -709,6 +729,18 @@ internal sealed class SocialPanel
                 }
                 break;
 
+            case Tab.Shop:
+                foreach (var item in _shopCatalog)
+                {
+                    var it = item;
+                    rows.Add(new Row
+                    {
+                        Text = $"{it.Name}  —  {it.Price} (Enter: comprar x1)",
+                        OnEnter = () => _ws.SendAsync("buy_item", new BuyItemPayload { ItemId = it.ItemId, Quantity = 1 }).GetAwaiter().GetResult(),
+                    });
+                }
+                break;
+
             case Tab.Appearance:
                 string current = _myColor();
                 foreach (var (name, label, r, g, b) in SpriteColors.Presets)
@@ -742,7 +774,7 @@ internal sealed class SocialPanel
 
         renderer.AddText("PANEL SOCIAL", PanelX, y, Theme.Primary.R, Theme.Primary.G, Theme.Primary.B, 1f, 1.3f); y += lineH * 1.8f;
 
-        string[] tabNames = ["Amigos", "Grupo", "Comercio", "Batalla", "Mercado", "Gremio", "Apariencia"];
+        string[] tabNames = ["Amigos", "Grupo", "Comercio", "Batalla", "Mercado", "Gremio", "Apariencia", "Tienda"];
         var tabLine = new StringBuilder();
         for (int i = 0; i < tabNames.Length; i++)
         {
@@ -816,6 +848,7 @@ internal sealed class SocialPanel
                 : "Izq/Der: pestaña  Arr/Abajo: elegir  Enter: comprar  Retroceso: cancelar publicación propia  F4: vender  F5: cerrar",
             Tab.Guild => "Izq/Der: pestaña  Arr/Abajo: elegir  Enter: fundar/invitar/aceptar/salir  Retroceso: rechazar/expulsar  F5: cerrar",
             Tab.Appearance => "Izq/Der: pestaña  Arr/Abajo: elegir  Enter: aplicar color  F5: cerrar",
+            Tab.Shop => "Izq/Der: pestaña  Arr/Abajo: elegir  Enter: comprar x1  F5: cerrar",
             _ => "",
         };
         renderer.AddText(hint, PanelX, windowHeight - 28f, 0.6f, 0.6f, 0.6f, 0.8f);

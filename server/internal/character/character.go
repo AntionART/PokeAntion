@@ -3,7 +3,12 @@
 // sprite, pensado para poder sumar más (nombre visible, título, etc.) sin reabrir router.go.
 package character
 
-import "database/sql"
+import (
+	"database/sql"
+	"errors"
+)
+
+var ErrInsufficientFunds = errors.New("no tenés suficiente dinero")
 
 type Service struct {
 	db *sql.DB
@@ -28,4 +33,23 @@ func (s *Service) SetColor(characterID, color string) error {
 func (s *Service) SetMoney(characterID string, amount int) error {
 	_, err := s.db.Exec(`UPDATE characters SET money = $1 WHERE id = $2`, amount, characterID)
 	return err
+}
+
+// TryDebitMoney descuenta amount del dinero de characterID de forma atómica (UPDATE...WHERE
+// money >= amount en una sola sentencia, no un SELECT seguido de un UPDATE separado) — evita
+// que dos compras concurrentes del mismo personaje dejen el dinero en negativo por una
+// condición de carrera. Devuelve ErrInsufficientFunds si no alcanzaba (no es un error de
+// sistema, el llamador lo muestra como mensaje normal, no lo loguea como error).
+func (s *Service) TryDebitMoney(characterID string, amount int) (newMoney int, err error) {
+	row := s.db.QueryRow(
+		`UPDATE characters SET money = money - $1 WHERE id = $2 AND money >= $1 RETURNING money`,
+		amount, characterID,
+	)
+	if err := row.Scan(&newMoney); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, ErrInsufficientFunds
+		}
+		return 0, err
+	}
+	return newMoney, nil
 }

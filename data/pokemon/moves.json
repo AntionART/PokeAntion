@@ -1,0 +1,3552 @@
+[
+  {
+    "id": 0,
+    "name": "-",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 0,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 1,
+    "name": "POUND",
+    "type": 0,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 35,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 2,
+    "name": "KARATE CHOP",
+    "type": 1,
+    "power": 50,
+    "accuracy": 100,
+    "pp": 25,
+    "effect": 43,
+    "targets_self": false
+  },
+  {
+    "id": 3,
+    "name": "DOUBLESLAP",
+    "type": 0,
+    "power": 15,
+    "accuracy": 85,
+    "pp": 10,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 4,
+    "name": "COMET PUNCH",
+    "type": 0,
+    "power": 18,
+    "accuracy": 85,
+    "pp": 15,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 5,
+    "name": "MEGA PUNCH",
+    "type": 0,
+    "power": 80,
+    "accuracy": 85,
+    "pp": 20,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 6,
+    "name": "PAY DAY",
+    "type": 0,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 34,
+    "targets_self": false
+  },
+  {
+    "id": 7,
+    "name": "FIRE PUNCH",
+    "type": 10,
+    "power": 75,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 4,
+    "targets_self": false
+  },
+  {
+    "id": 8,
+    "name": "ICE PUNCH",
+    "type": 15,
+    "power": 75,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 5,
+    "targets_self": false
+  },
+  {
+    "id": 9,
+    "name": "THUNDERPUNCH",
+    "type": 13,
+    "power": 75,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 6,
+    "targets_self": false
+  },
+  {
+    "id": 10,
+    "name": "SCRATCH",
+    "type": 0,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 35,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 11,
+    "name": "VICEGRIP",
+    "type": 0,
+    "power": 55,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 12,
+    "name": "GUILLOTINE",
+    "type": 0,
+    "power": 1,
+    "accuracy": 30,
+    "pp": 5,
+    "effect": 38,
+    "targets_self": false
+  },
+  {
+    "id": 13,
+    "name": "RAZOR WIND",
+    "type": 0,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 39,
+    "targets_self": false
+  },
+  {
+    "id": 14,
+    "name": "SWORDS DANCE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 50,
+    "targets_self": true
+  },
+  {
+    "id": 15,
+    "name": "CUT",
+    "type": 0,
+    "power": 50,
+    "accuracy": 95,
+    "pp": 30,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 16,
+    "name": "GUST",
+    "type": 2,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 35,
+    "effect": 149,
+    "targets_self": false
+  },
+  {
+    "id": 17,
+    "name": "WING ATTACK",
+    "type": 2,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 35,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 18,
+    "name": "WHIRLWIND",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 28,
+    "targets_self": false
+  },
+  {
+    "id": 19,
+    "name": "FLY",
+    "type": 2,
+    "power": 70,
+    "accuracy": 95,
+    "pp": 15,
+    "effect": 155,
+    "targets_self": false
+  },
+  {
+    "id": 20,
+    "name": "BIND",
+    "type": 0,
+    "power": 15,
+    "accuracy": 75,
+    "pp": 20,
+    "effect": 42,
+    "targets_self": false
+  },
+  {
+    "id": 21,
+    "name": "SLAM",
+    "type": 0,
+    "power": 80,
+    "accuracy": 75,
+    "pp": 20,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 22,
+    "name": "VINE WHIP",
+    "type": 12,
+    "power": 35,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 23,
+    "name": "STOMP",
+    "type": 0,
+    "power": 65,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 24,
+    "name": "DOUBLE KICK",
+    "type": 1,
+    "power": 30,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 44,
+    "targets_self": false
+  },
+  {
+    "id": 25,
+    "name": "MEGA KICK",
+    "type": 0,
+    "power": 120,
+    "accuracy": 75,
+    "pp": 5,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 26,
+    "name": "JUMP KICK",
+    "type": 1,
+    "power": 70,
+    "accuracy": 95,
+    "pp": 25,
+    "effect": 45,
+    "targets_self": false
+  },
+  {
+    "id": 27,
+    "name": "ROLLING KICK",
+    "type": 1,
+    "power": 60,
+    "accuracy": 85,
+    "pp": 15,
+    "effect": 31,
+    "targets_self": false
+  },
+  {
+    "id": 28,
+    "name": "SAND-ATTACK",
+    "type": 4,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 23,
+    "targets_self": false
+  },
+  {
+    "id": 29,
+    "name": "HEADBUTT",
+    "type": 0,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 31,
+    "targets_self": false
+  },
+  {
+    "id": 30,
+    "name": "HORN ATTACK",
+    "type": 0,
+    "power": 65,
+    "accuracy": 100,
+    "pp": 25,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 31,
+    "name": "FURY ATTACK",
+    "type": 0,
+    "power": 15,
+    "accuracy": 85,
+    "pp": 20,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 32,
+    "name": "HORN DRILL",
+    "type": 0,
+    "power": 1,
+    "accuracy": 30,
+    "pp": 5,
+    "effect": 38,
+    "targets_self": false
+  },
+  {
+    "id": 33,
+    "name": "TACKLE",
+    "type": 0,
+    "power": 35,
+    "accuracy": 95,
+    "pp": 35,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 34,
+    "name": "BODY SLAM",
+    "type": 0,
+    "power": 85,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 6,
+    "targets_self": false
+  },
+  {
+    "id": 35,
+    "name": "WRAP",
+    "type": 0,
+    "power": 15,
+    "accuracy": 85,
+    "pp": 20,
+    "effect": 42,
+    "targets_self": false
+  },
+  {
+    "id": 36,
+    "name": "TAKE DOWN",
+    "type": 0,
+    "power": 90,
+    "accuracy": 85,
+    "pp": 20,
+    "effect": 48,
+    "targets_self": false
+  },
+  {
+    "id": 37,
+    "name": "THRASH",
+    "type": 0,
+    "power": 90,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 27,
+    "targets_self": false
+  },
+  {
+    "id": 38,
+    "name": "DOUBLE-EDGE",
+    "type": 0,
+    "power": 120,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 198,
+    "targets_self": false
+  },
+  {
+    "id": 39,
+    "name": "TAIL WHIP",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 19,
+    "targets_self": false
+  },
+  {
+    "id": 40,
+    "name": "POISON STING",
+    "type": 3,
+    "power": 15,
+    "accuracy": 100,
+    "pp": 35,
+    "effect": 2,
+    "targets_self": false
+  },
+  {
+    "id": 41,
+    "name": "TWINEEDLE",
+    "type": 6,
+    "power": 25,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 77,
+    "targets_self": false
+  },
+  {
+    "id": 42,
+    "name": "PIN MISSILE",
+    "type": 6,
+    "power": 14,
+    "accuracy": 85,
+    "pp": 20,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 43,
+    "name": "LEER",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 19,
+    "targets_self": false
+  },
+  {
+    "id": 44,
+    "name": "BITE",
+    "type": 17,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 25,
+    "effect": 31,
+    "targets_self": false
+  },
+  {
+    "id": 45,
+    "name": "GROWL",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 40,
+    "effect": 18,
+    "targets_self": false
+  },
+  {
+    "id": 46,
+    "name": "ROAR",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 28,
+    "targets_self": false
+  },
+  {
+    "id": 47,
+    "name": "SING",
+    "type": 0,
+    "power": 0,
+    "accuracy": 55,
+    "pp": 15,
+    "effect": 1,
+    "targets_self": false
+  },
+  {
+    "id": 48,
+    "name": "SUPERSONIC",
+    "type": 0,
+    "power": 0,
+    "accuracy": 55,
+    "pp": 20,
+    "effect": 49,
+    "targets_self": false
+  },
+  {
+    "id": 49,
+    "name": "SONICBOOM",
+    "type": 0,
+    "power": 1,
+    "accuracy": 90,
+    "pp": 20,
+    "effect": 130,
+    "targets_self": false
+  },
+  {
+    "id": 50,
+    "name": "DISABLE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 55,
+    "pp": 20,
+    "effect": 86,
+    "targets_self": false
+  },
+  {
+    "id": 51,
+    "name": "ACID",
+    "type": 3,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 69,
+    "targets_self": false
+  },
+  {
+    "id": 52,
+    "name": "EMBER",
+    "type": 10,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 25,
+    "effect": 4,
+    "targets_self": false
+  },
+  {
+    "id": 53,
+    "name": "FLAMETHROWER",
+    "type": 10,
+    "power": 95,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 4,
+    "targets_self": false
+  },
+  {
+    "id": 54,
+    "name": "MIST",
+    "type": 15,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 46,
+    "targets_self": true
+  },
+  {
+    "id": 55,
+    "name": "WATER GUN",
+    "type": 11,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 25,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 56,
+    "name": "HYDRO PUMP",
+    "type": 11,
+    "power": 120,
+    "accuracy": 80,
+    "pp": 5,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 57,
+    "name": "SURF",
+    "type": 11,
+    "power": 95,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 58,
+    "name": "ICE BEAM",
+    "type": 15,
+    "power": 95,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 5,
+    "targets_self": false
+  },
+  {
+    "id": 59,
+    "name": "BLIZZARD",
+    "type": 15,
+    "power": 120,
+    "accuracy": 70,
+    "pp": 5,
+    "effect": 5,
+    "targets_self": false
+  },
+  {
+    "id": 60,
+    "name": "PSYBEAM",
+    "type": 14,
+    "power": 65,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 76,
+    "targets_self": false
+  },
+  {
+    "id": 61,
+    "name": "BUBBLEBEAM",
+    "type": 11,
+    "power": 65,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 70,
+    "targets_self": false
+  },
+  {
+    "id": 62,
+    "name": "AURORA BEAM",
+    "type": 15,
+    "power": 65,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 68,
+    "targets_self": false
+  },
+  {
+    "id": 63,
+    "name": "HYPER BEAM",
+    "type": 0,
+    "power": 150,
+    "accuracy": 90,
+    "pp": 5,
+    "effect": 80,
+    "targets_self": false
+  },
+  {
+    "id": 64,
+    "name": "PECK",
+    "type": 2,
+    "power": 35,
+    "accuracy": 100,
+    "pp": 35,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 65,
+    "name": "DRILL PECK",
+    "type": 2,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 66,
+    "name": "SUBMISSION",
+    "type": 1,
+    "power": 80,
+    "accuracy": 80,
+    "pp": 25,
+    "effect": 48,
+    "targets_self": false
+  },
+  {
+    "id": 67,
+    "name": "LOW KICK",
+    "type": 1,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 196,
+    "targets_self": false
+  },
+  {
+    "id": 68,
+    "name": "COUNTER",
+    "type": 1,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 89,
+    "targets_self": false
+  },
+  {
+    "id": 69,
+    "name": "SEISMIC TOSS",
+    "type": 1,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 87,
+    "targets_self": false
+  },
+  {
+    "id": 70,
+    "name": "STRENGTH",
+    "type": 0,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 71,
+    "name": "ABSORB",
+    "type": 12,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 3,
+    "targets_self": false
+  },
+  {
+    "id": 72,
+    "name": "MEGA DRAIN",
+    "type": 12,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 3,
+    "targets_self": false
+  },
+  {
+    "id": 73,
+    "name": "LEECH SEED",
+    "type": 12,
+    "power": 0,
+    "accuracy": 90,
+    "pp": 10,
+    "effect": 84,
+    "targets_self": false
+  },
+  {
+    "id": 74,
+    "name": "GROWTH",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 40,
+    "effect": 13,
+    "targets_self": true
+  },
+  {
+    "id": 75,
+    "name": "RAZOR LEAF",
+    "type": 12,
+    "power": 55,
+    "accuracy": 95,
+    "pp": 25,
+    "effect": 43,
+    "targets_self": false
+  },
+  {
+    "id": 76,
+    "name": "SOLARBEAM",
+    "type": 12,
+    "power": 120,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 151,
+    "targets_self": false
+  },
+  {
+    "id": 77,
+    "name": "POISONPOWDER",
+    "type": 3,
+    "power": 0,
+    "accuracy": 75,
+    "pp": 35,
+    "effect": 66,
+    "targets_self": false
+  },
+  {
+    "id": 78,
+    "name": "STUN SPORE",
+    "type": 12,
+    "power": 0,
+    "accuracy": 75,
+    "pp": 30,
+    "effect": 67,
+    "targets_self": false
+  },
+  {
+    "id": 79,
+    "name": "SLEEP POWDER",
+    "type": 12,
+    "power": 0,
+    "accuracy": 75,
+    "pp": 15,
+    "effect": 1,
+    "targets_self": false
+  },
+  {
+    "id": 80,
+    "name": "PETAL DANCE",
+    "type": 12,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 27,
+    "targets_self": false
+  },
+  {
+    "id": 81,
+    "name": "STRING SHOT",
+    "type": 6,
+    "power": 0,
+    "accuracy": 95,
+    "pp": 40,
+    "effect": 20,
+    "targets_self": false
+  },
+  {
+    "id": 82,
+    "name": "DRAGON RAGE",
+    "type": 16,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 41,
+    "targets_self": false
+  },
+  {
+    "id": 83,
+    "name": "FIRE SPIN",
+    "type": 10,
+    "power": 15,
+    "accuracy": 70,
+    "pp": 15,
+    "effect": 42,
+    "targets_self": false
+  },
+  {
+    "id": 84,
+    "name": "THUNDERSHOCK",
+    "type": 13,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 6,
+    "targets_self": false
+  },
+  {
+    "id": 85,
+    "name": "THUNDERBOLT",
+    "type": 13,
+    "power": 95,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 6,
+    "targets_self": false
+  },
+  {
+    "id": 86,
+    "name": "THUNDER WAVE",
+    "type": 13,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 67,
+    "targets_self": false
+  },
+  {
+    "id": 87,
+    "name": "THUNDER",
+    "type": 13,
+    "power": 120,
+    "accuracy": 70,
+    "pp": 10,
+    "effect": 152,
+    "targets_self": false
+  },
+  {
+    "id": 88,
+    "name": "ROCK THROW",
+    "type": 5,
+    "power": 50,
+    "accuracy": 90,
+    "pp": 15,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 89,
+    "name": "EARTHQUAKE",
+    "type": 4,
+    "power": 100,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 147,
+    "targets_self": false
+  },
+  {
+    "id": 90,
+    "name": "FISSURE",
+    "type": 4,
+    "power": 1,
+    "accuracy": 30,
+    "pp": 5,
+    "effect": 38,
+    "targets_self": false
+  },
+  {
+    "id": 91,
+    "name": "DIG",
+    "type": 4,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 155,
+    "targets_self": false
+  },
+  {
+    "id": 92,
+    "name": "TOXIC",
+    "type": 3,
+    "power": 0,
+    "accuracy": 85,
+    "pp": 10,
+    "effect": 33,
+    "targets_self": false
+  },
+  {
+    "id": 93,
+    "name": "CONFUSION",
+    "type": 14,
+    "power": 50,
+    "accuracy": 100,
+    "pp": 25,
+    "effect": 76,
+    "targets_self": false
+  },
+  {
+    "id": 94,
+    "name": "PSYCHIC",
+    "type": 14,
+    "power": 90,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 72,
+    "targets_self": false
+  },
+  {
+    "id": 95,
+    "name": "HYPNOSIS",
+    "type": 14,
+    "power": 0,
+    "accuracy": 60,
+    "pp": 20,
+    "effect": 1,
+    "targets_self": false
+  },
+  {
+    "id": 96,
+    "name": "MEDITATE",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 40,
+    "effect": 10,
+    "targets_self": true
+  },
+  {
+    "id": 97,
+    "name": "AGILITY",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 52,
+    "targets_self": true
+  },
+  {
+    "id": 98,
+    "name": "QUICK ATTACK",
+    "type": 0,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 103,
+    "targets_self": false
+  },
+  {
+    "id": 99,
+    "name": "RAGE",
+    "type": 0,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 81,
+    "targets_self": false
+  },
+  {
+    "id": 100,
+    "name": "TELEPORT",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 153,
+    "targets_self": true
+  },
+  {
+    "id": 101,
+    "name": "NIGHT SHADE",
+    "type": 7,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 87,
+    "targets_self": false
+  },
+  {
+    "id": 102,
+    "name": "MIMIC",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 82,
+    "targets_self": false
+  },
+  {
+    "id": 103,
+    "name": "SCREECH",
+    "type": 0,
+    "power": 0,
+    "accuracy": 85,
+    "pp": 40,
+    "effect": 59,
+    "targets_self": false
+  },
+  {
+    "id": 104,
+    "name": "DOUBLE TEAM",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 15,
+    "effect": 16,
+    "targets_self": true
+  },
+  {
+    "id": 105,
+    "name": "RECOVER",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 32,
+    "targets_self": true
+  },
+  {
+    "id": 106,
+    "name": "HARDEN",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 11,
+    "targets_self": true
+  },
+  {
+    "id": 107,
+    "name": "MINIMIZE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 108,
+    "targets_self": true
+  },
+  {
+    "id": 108,
+    "name": "SMOKESCREEN",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 23,
+    "targets_self": false
+  },
+  {
+    "id": 109,
+    "name": "CONFUSE RAY",
+    "type": 7,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 49,
+    "targets_self": false
+  },
+  {
+    "id": 110,
+    "name": "WITHDRAW",
+    "type": 11,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 40,
+    "effect": 11,
+    "targets_self": true
+  },
+  {
+    "id": 111,
+    "name": "DEFENSE CURL",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 40,
+    "effect": 156,
+    "targets_self": true
+  },
+  {
+    "id": 112,
+    "name": "BARRIER",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 51,
+    "targets_self": true
+  },
+  {
+    "id": 113,
+    "name": "LIGHT SCREEN",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 35,
+    "targets_self": true
+  },
+  {
+    "id": 114,
+    "name": "HAZE",
+    "type": 15,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 25,
+    "targets_self": true
+  },
+  {
+    "id": 115,
+    "name": "REFLECT",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 65,
+    "targets_self": true
+  },
+  {
+    "id": 116,
+    "name": "FOCUS ENERGY",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 47,
+    "targets_self": true
+  },
+  {
+    "id": 117,
+    "name": "BIDE",
+    "type": 0,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 26,
+    "targets_self": true
+  },
+  {
+    "id": 118,
+    "name": "METRONOME",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 83,
+    "targets_self": false
+  },
+  {
+    "id": 119,
+    "name": "MIRROR MOVE",
+    "type": 2,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 9,
+    "targets_self": false
+  },
+  {
+    "id": 120,
+    "name": "SELFDESTRUCT",
+    "type": 0,
+    "power": 200,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 7,
+    "targets_self": false
+  },
+  {
+    "id": 121,
+    "name": "EGG BOMB",
+    "type": 0,
+    "power": 100,
+    "accuracy": 75,
+    "pp": 10,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 122,
+    "name": "LICK",
+    "type": 7,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 6,
+    "targets_self": false
+  },
+  {
+    "id": 123,
+    "name": "SMOG",
+    "type": 3,
+    "power": 20,
+    "accuracy": 70,
+    "pp": 20,
+    "effect": 2,
+    "targets_self": false
+  },
+  {
+    "id": 124,
+    "name": "SLUDGE",
+    "type": 3,
+    "power": 65,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 2,
+    "targets_self": false
+  },
+  {
+    "id": 125,
+    "name": "BONE CLUB",
+    "type": 4,
+    "power": 65,
+    "accuracy": 85,
+    "pp": 20,
+    "effect": 31,
+    "targets_self": false
+  },
+  {
+    "id": 126,
+    "name": "FIRE BLAST",
+    "type": 10,
+    "power": 120,
+    "accuracy": 85,
+    "pp": 5,
+    "effect": 4,
+    "targets_self": false
+  },
+  {
+    "id": 127,
+    "name": "WATERFALL",
+    "type": 11,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 128,
+    "name": "CLAMP",
+    "type": 11,
+    "power": 35,
+    "accuracy": 75,
+    "pp": 10,
+    "effect": 42,
+    "targets_self": false
+  },
+  {
+    "id": 129,
+    "name": "SWIFT",
+    "type": 0,
+    "power": 60,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 17,
+    "targets_self": false
+  },
+  {
+    "id": 130,
+    "name": "SKULL BASH",
+    "type": 0,
+    "power": 100,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 145,
+    "targets_self": false
+  },
+  {
+    "id": 131,
+    "name": "SPIKE CANNON",
+    "type": 0,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 132,
+    "name": "CONSTRICT",
+    "type": 0,
+    "power": 10,
+    "accuracy": 100,
+    "pp": 35,
+    "effect": 70,
+    "targets_self": false
+  },
+  {
+    "id": 133,
+    "name": "AMNESIA",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 54,
+    "targets_self": true
+  },
+  {
+    "id": 134,
+    "name": "KINESIS",
+    "type": 14,
+    "power": 0,
+    "accuracy": 80,
+    "pp": 15,
+    "effect": 23,
+    "targets_self": false
+  },
+  {
+    "id": 135,
+    "name": "SOFTBOILED",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 157,
+    "targets_self": true
+  },
+  {
+    "id": 136,
+    "name": "HI JUMP KICK",
+    "type": 1,
+    "power": 85,
+    "accuracy": 90,
+    "pp": 20,
+    "effect": 45,
+    "targets_self": false
+  },
+  {
+    "id": 137,
+    "name": "GLARE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 75,
+    "pp": 30,
+    "effect": 67,
+    "targets_self": false
+  },
+  {
+    "id": 138,
+    "name": "DREAM EATER",
+    "type": 14,
+    "power": 100,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 8,
+    "targets_self": false
+  },
+  {
+    "id": 139,
+    "name": "POISON GAS",
+    "type": 3,
+    "power": 0,
+    "accuracy": 55,
+    "pp": 40,
+    "effect": 66,
+    "targets_self": false
+  },
+  {
+    "id": 140,
+    "name": "BARRAGE",
+    "type": 0,
+    "power": 15,
+    "accuracy": 85,
+    "pp": 20,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 141,
+    "name": "LEECH LIFE",
+    "type": 6,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 3,
+    "targets_self": false
+  },
+  {
+    "id": 142,
+    "name": "LOVELY KISS",
+    "type": 0,
+    "power": 0,
+    "accuracy": 75,
+    "pp": 10,
+    "effect": 1,
+    "targets_self": false
+  },
+  {
+    "id": 143,
+    "name": "SKY ATTACK",
+    "type": 2,
+    "power": 140,
+    "accuracy": 90,
+    "pp": 5,
+    "effect": 75,
+    "targets_self": false
+  },
+  {
+    "id": 144,
+    "name": "TRANSFORM",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 57,
+    "targets_self": false
+  },
+  {
+    "id": 145,
+    "name": "BUBBLE",
+    "type": 11,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 70,
+    "targets_self": false
+  },
+  {
+    "id": 146,
+    "name": "DIZZY PUNCH",
+    "type": 0,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 76,
+    "targets_self": false
+  },
+  {
+    "id": 147,
+    "name": "SPORE",
+    "type": 12,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 1,
+    "targets_self": false
+  },
+  {
+    "id": 148,
+    "name": "FLASH",
+    "type": 0,
+    "power": 0,
+    "accuracy": 70,
+    "pp": 20,
+    "effect": 23,
+    "targets_self": false
+  },
+  {
+    "id": 149,
+    "name": "PSYWAVE",
+    "type": 14,
+    "power": 1,
+    "accuracy": 80,
+    "pp": 15,
+    "effect": 88,
+    "targets_self": false
+  },
+  {
+    "id": 150,
+    "name": "SPLASH",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 40,
+    "effect": 85,
+    "targets_self": true
+  },
+  {
+    "id": 151,
+    "name": "ACID ARMOR",
+    "type": 3,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 40,
+    "effect": 51,
+    "targets_self": true
+  },
+  {
+    "id": 152,
+    "name": "CRABHAMMER",
+    "type": 11,
+    "power": 90,
+    "accuracy": 85,
+    "pp": 10,
+    "effect": 43,
+    "targets_self": false
+  },
+  {
+    "id": 153,
+    "name": "EXPLOSION",
+    "type": 0,
+    "power": 250,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 7,
+    "targets_self": false
+  },
+  {
+    "id": 154,
+    "name": "FURY SWIPES",
+    "type": 0,
+    "power": 18,
+    "accuracy": 80,
+    "pp": 15,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 155,
+    "name": "BONEMERANG",
+    "type": 4,
+    "power": 50,
+    "accuracy": 90,
+    "pp": 10,
+    "effect": 44,
+    "targets_self": false
+  },
+  {
+    "id": 156,
+    "name": "REST",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 37,
+    "targets_self": true
+  },
+  {
+    "id": 157,
+    "name": "ROCK SLIDE",
+    "type": 5,
+    "power": 75,
+    "accuracy": 90,
+    "pp": 10,
+    "effect": 31,
+    "targets_self": false
+  },
+  {
+    "id": 158,
+    "name": "HYPER FANG",
+    "type": 0,
+    "power": 80,
+    "accuracy": 90,
+    "pp": 15,
+    "effect": 31,
+    "targets_self": false
+  },
+  {
+    "id": 159,
+    "name": "SHARPEN",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 10,
+    "targets_self": true
+  },
+  {
+    "id": 160,
+    "name": "CONVERSION",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 30,
+    "effect": 30,
+    "targets_self": true
+  },
+  {
+    "id": 161,
+    "name": "TRI ATTACK",
+    "type": 0,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 36,
+    "targets_self": false
+  },
+  {
+    "id": 162,
+    "name": "SUPER FANG",
+    "type": 0,
+    "power": 1,
+    "accuracy": 90,
+    "pp": 10,
+    "effect": 40,
+    "targets_self": false
+  },
+  {
+    "id": 163,
+    "name": "SLASH",
+    "type": 0,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 43,
+    "targets_self": false
+  },
+  {
+    "id": 164,
+    "name": "SUBSTITUTE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 79,
+    "targets_self": true
+  },
+  {
+    "id": 165,
+    "name": "STRUGGLE",
+    "type": 0,
+    "power": 50,
+    "accuracy": 100,
+    "pp": 1,
+    "effect": 48,
+    "targets_self": false
+  },
+  {
+    "id": 166,
+    "name": "SKETCH",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 1,
+    "effect": 95,
+    "targets_self": false
+  },
+  {
+    "id": 167,
+    "name": "TRIPLE KICK",
+    "type": 1,
+    "power": 10,
+    "accuracy": 90,
+    "pp": 10,
+    "effect": 104,
+    "targets_self": false
+  },
+  {
+    "id": 168,
+    "name": "THIEF",
+    "type": 17,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 105,
+    "targets_self": false
+  },
+  {
+    "id": 169,
+    "name": "SPIDER WEB",
+    "type": 6,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 106,
+    "targets_self": false
+  },
+  {
+    "id": 170,
+    "name": "MIND READER",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 94,
+    "targets_self": false
+  },
+  {
+    "id": 171,
+    "name": "NIGHTMARE",
+    "type": 7,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 107,
+    "targets_self": false
+  },
+  {
+    "id": 172,
+    "name": "FLAME WHEEL",
+    "type": 10,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 25,
+    "effect": 125,
+    "targets_self": false
+  },
+  {
+    "id": 173,
+    "name": "SNORE",
+    "type": 0,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 92,
+    "targets_self": false
+  },
+  {
+    "id": 174,
+    "name": "CURSE",
+    "type": 9,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 109,
+    "targets_self": false
+  },
+  {
+    "id": 175,
+    "name": "FLAIL",
+    "type": 0,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 99,
+    "targets_self": false
+  },
+  {
+    "id": 176,
+    "name": "CONVERSION 2",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 93,
+    "targets_self": true
+  },
+  {
+    "id": 177,
+    "name": "AEROBLAST",
+    "type": 2,
+    "power": 100,
+    "accuracy": 95,
+    "pp": 5,
+    "effect": 43,
+    "targets_self": false
+  },
+  {
+    "id": 178,
+    "name": "COTTON SPORE",
+    "type": 12,
+    "power": 0,
+    "accuracy": 85,
+    "pp": 40,
+    "effect": 60,
+    "targets_self": false
+  },
+  {
+    "id": 179,
+    "name": "REVERSAL",
+    "type": 1,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 99,
+    "targets_self": false
+  },
+  {
+    "id": 180,
+    "name": "SPITE",
+    "type": 7,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 100,
+    "targets_self": false
+  },
+  {
+    "id": 181,
+    "name": "POWDER SNOW",
+    "type": 15,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 25,
+    "effect": 5,
+    "targets_self": false
+  },
+  {
+    "id": 182,
+    "name": "PROTECT",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 111,
+    "targets_self": true
+  },
+  {
+    "id": 183,
+    "name": "MACH PUNCH",
+    "type": 1,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 103,
+    "targets_self": false
+  },
+  {
+    "id": 184,
+    "name": "SCARY FACE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 90,
+    "pp": 10,
+    "effect": 60,
+    "targets_self": false
+  },
+  {
+    "id": 185,
+    "name": "FAINT ATTACK",
+    "type": 17,
+    "power": 60,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 17,
+    "targets_self": false
+  },
+  {
+    "id": 186,
+    "name": "SWEET KISS",
+    "type": 0,
+    "power": 0,
+    "accuracy": 75,
+    "pp": 10,
+    "effect": 49,
+    "targets_self": false
+  },
+  {
+    "id": 187,
+    "name": "BELLY DRUM",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 142,
+    "targets_self": true
+  },
+  {
+    "id": 188,
+    "name": "SLUDGE BOMB",
+    "type": 3,
+    "power": 90,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 2,
+    "targets_self": false
+  },
+  {
+    "id": 189,
+    "name": "MUD-SLAP",
+    "type": 4,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 73,
+    "targets_self": false
+  },
+  {
+    "id": 190,
+    "name": "OCTAZOOKA",
+    "type": 11,
+    "power": 65,
+    "accuracy": 85,
+    "pp": 10,
+    "effect": 73,
+    "targets_self": false
+  },
+  {
+    "id": 191,
+    "name": "SPIKES",
+    "type": 4,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 112,
+    "targets_self": false
+  },
+  {
+    "id": 192,
+    "name": "ZAP CANNON",
+    "type": 13,
+    "power": 100,
+    "accuracy": 50,
+    "pp": 5,
+    "effect": 6,
+    "targets_self": false
+  },
+  {
+    "id": 193,
+    "name": "FORESIGHT",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 40,
+    "effect": 113,
+    "targets_self": false
+  },
+  {
+    "id": 194,
+    "name": "DESTINY BOND",
+    "type": 7,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 98,
+    "targets_self": true
+  },
+  {
+    "id": 195,
+    "name": "PERISH SONG",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 114,
+    "targets_self": true
+  },
+  {
+    "id": 196,
+    "name": "ICY WIND",
+    "type": 15,
+    "power": 55,
+    "accuracy": 95,
+    "pp": 15,
+    "effect": 70,
+    "targets_self": false
+  },
+  {
+    "id": 197,
+    "name": "DETECT",
+    "type": 1,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 111,
+    "targets_self": true
+  },
+  {
+    "id": 198,
+    "name": "BONE RUSH",
+    "type": 4,
+    "power": 25,
+    "accuracy": 80,
+    "pp": 10,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 199,
+    "name": "LOCK-ON",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 94,
+    "targets_self": false
+  },
+  {
+    "id": 200,
+    "name": "OUTRAGE",
+    "type": 16,
+    "power": 90,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 27,
+    "targets_self": false
+  },
+  {
+    "id": 201,
+    "name": "SANDSTORM",
+    "type": 5,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 115,
+    "targets_self": true
+  },
+  {
+    "id": 202,
+    "name": "GIGA DRAIN",
+    "type": 12,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 3,
+    "targets_self": false
+  },
+  {
+    "id": 203,
+    "name": "ENDURE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 116,
+    "targets_self": true
+  },
+  {
+    "id": 204,
+    "name": "CHARM",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 58,
+    "targets_self": false
+  },
+  {
+    "id": 205,
+    "name": "ROLLOUT",
+    "type": 5,
+    "power": 30,
+    "accuracy": 90,
+    "pp": 20,
+    "effect": 117,
+    "targets_self": false
+  },
+  {
+    "id": 206,
+    "name": "FALSE SWIPE",
+    "type": 0,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 40,
+    "effect": 101,
+    "targets_self": false
+  },
+  {
+    "id": 207,
+    "name": "SWAGGER",
+    "type": 0,
+    "power": 0,
+    "accuracy": 90,
+    "pp": 15,
+    "effect": 118,
+    "targets_self": false
+  },
+  {
+    "id": 208,
+    "name": "MILK DRINK",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 157,
+    "targets_self": true
+  },
+  {
+    "id": 209,
+    "name": "SPARK",
+    "type": 13,
+    "power": 65,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 6,
+    "targets_self": false
+  },
+  {
+    "id": 210,
+    "name": "FURY CUTTER",
+    "type": 6,
+    "power": 10,
+    "accuracy": 95,
+    "pp": 20,
+    "effect": 119,
+    "targets_self": false
+  },
+  {
+    "id": 211,
+    "name": "STEEL WING",
+    "type": 8,
+    "power": 70,
+    "accuracy": 90,
+    "pp": 25,
+    "effect": 138,
+    "targets_self": false
+  },
+  {
+    "id": 212,
+    "name": "MEAN LOOK",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 106,
+    "targets_self": false
+  },
+  {
+    "id": 213,
+    "name": "ATTRACT",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 120,
+    "targets_self": false
+  },
+  {
+    "id": 214,
+    "name": "SLEEP TALK",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 97,
+    "targets_self": false
+  },
+  {
+    "id": 215,
+    "name": "HEAL BELL",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 102,
+    "targets_self": true
+  },
+  {
+    "id": 216,
+    "name": "RETURN",
+    "type": 0,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 121,
+    "targets_self": false
+  },
+  {
+    "id": 217,
+    "name": "PRESENT",
+    "type": 0,
+    "power": 1,
+    "accuracy": 90,
+    "pp": 15,
+    "effect": 122,
+    "targets_self": false
+  },
+  {
+    "id": 218,
+    "name": "FRUSTRATION",
+    "type": 0,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 123,
+    "targets_self": false
+  },
+  {
+    "id": 219,
+    "name": "SAFEGUARD",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 25,
+    "effect": 124,
+    "targets_self": true
+  },
+  {
+    "id": 220,
+    "name": "PAIN SPLIT",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 91,
+    "targets_self": false
+  },
+  {
+    "id": 221,
+    "name": "SACRED FIRE",
+    "type": 10,
+    "power": 100,
+    "accuracy": 95,
+    "pp": 5,
+    "effect": 125,
+    "targets_self": false
+  },
+  {
+    "id": 222,
+    "name": "MAGNITUDE",
+    "type": 4,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 126,
+    "targets_self": false
+  },
+  {
+    "id": 223,
+    "name": "DYNAMICPUNCH",
+    "type": 1,
+    "power": 100,
+    "accuracy": 50,
+    "pp": 5,
+    "effect": 76,
+    "targets_self": false
+  },
+  {
+    "id": 224,
+    "name": "MEGAHORN",
+    "type": 6,
+    "power": 120,
+    "accuracy": 85,
+    "pp": 10,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 225,
+    "name": "DRAGONBREATH",
+    "type": 16,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 6,
+    "targets_self": false
+  },
+  {
+    "id": 226,
+    "name": "BATON PASS",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 40,
+    "effect": 127,
+    "targets_self": true
+  },
+  {
+    "id": 227,
+    "name": "ENCORE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 90,
+    "targets_self": false
+  },
+  {
+    "id": 228,
+    "name": "PURSUIT",
+    "type": 17,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 128,
+    "targets_self": false
+  },
+  {
+    "id": 229,
+    "name": "RAPID SPIN",
+    "type": 0,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 40,
+    "effect": 129,
+    "targets_self": false
+  },
+  {
+    "id": 230,
+    "name": "SWEET SCENT",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 24,
+    "targets_self": false
+  },
+  {
+    "id": 231,
+    "name": "IRON TAIL",
+    "type": 8,
+    "power": 100,
+    "accuracy": 75,
+    "pp": 15,
+    "effect": 69,
+    "targets_self": false
+  },
+  {
+    "id": 232,
+    "name": "METAL CLAW",
+    "type": 8,
+    "power": 50,
+    "accuracy": 95,
+    "pp": 35,
+    "effect": 139,
+    "targets_self": false
+  },
+  {
+    "id": 233,
+    "name": "VITAL THROW",
+    "type": 1,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 78,
+    "targets_self": false
+  },
+  {
+    "id": 234,
+    "name": "MORNING SUN",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 132,
+    "targets_self": true
+  },
+  {
+    "id": 235,
+    "name": "SYNTHESIS",
+    "type": 12,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 133,
+    "targets_self": true
+  },
+  {
+    "id": 236,
+    "name": "MOONLIGHT",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 134,
+    "targets_self": true
+  },
+  {
+    "id": 237,
+    "name": "HIDDEN POWER",
+    "type": 0,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 135,
+    "targets_self": false
+  },
+  {
+    "id": 238,
+    "name": "CROSS CHOP",
+    "type": 1,
+    "power": 100,
+    "accuracy": 80,
+    "pp": 5,
+    "effect": 43,
+    "targets_self": false
+  },
+  {
+    "id": 239,
+    "name": "TWISTER",
+    "type": 16,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 146,
+    "targets_self": false
+  },
+  {
+    "id": 240,
+    "name": "RAIN DANCE",
+    "type": 11,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 136,
+    "targets_self": true
+  },
+  {
+    "id": 241,
+    "name": "SUNNY DAY",
+    "type": 10,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 137,
+    "targets_self": true
+  },
+  {
+    "id": 242,
+    "name": "CRUNCH",
+    "type": 17,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 72,
+    "targets_self": false
+  },
+  {
+    "id": 243,
+    "name": "MIRROR COAT",
+    "type": 14,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 144,
+    "targets_self": false
+  },
+  {
+    "id": 244,
+    "name": "PSYCH UP",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 143,
+    "targets_self": false
+  },
+  {
+    "id": 245,
+    "name": "EXTREMESPEED",
+    "type": 0,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 103,
+    "targets_self": false
+  },
+  {
+    "id": 246,
+    "name": "ANCIENTPOWER",
+    "type": 5,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 140,
+    "targets_self": false
+  },
+  {
+    "id": 247,
+    "name": "SHADOW BALL",
+    "type": 7,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 72,
+    "targets_self": false
+  },
+  {
+    "id": 248,
+    "name": "FUTURE SIGHT",
+    "type": 14,
+    "power": 80,
+    "accuracy": 90,
+    "pp": 15,
+    "effect": 148,
+    "targets_self": false
+  },
+  {
+    "id": 249,
+    "name": "ROCK SMASH",
+    "type": 1,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 69,
+    "targets_self": false
+  },
+  {
+    "id": 250,
+    "name": "WHIRLPOOL",
+    "type": 11,
+    "power": 15,
+    "accuracy": 70,
+    "pp": 15,
+    "effect": 42,
+    "targets_self": false
+  },
+  {
+    "id": 251,
+    "name": "BEAT UP",
+    "type": 17,
+    "power": 10,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 154,
+    "targets_self": false
+  },
+  {
+    "id": 252,
+    "name": "FAKE OUT",
+    "type": 0,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 158,
+    "targets_self": false
+  },
+  {
+    "id": 253,
+    "name": "UPROAR",
+    "type": 0,
+    "power": 50,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 159,
+    "targets_self": false
+  },
+  {
+    "id": 254,
+    "name": "STOCKPILE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 160,
+    "targets_self": true
+  },
+  {
+    "id": 255,
+    "name": "SPIT UP",
+    "type": 0,
+    "power": 100,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 161,
+    "targets_self": false
+  },
+  {
+    "id": 256,
+    "name": "SWALLOW",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 162,
+    "targets_self": true
+  },
+  {
+    "id": 257,
+    "name": "HEAT WAVE",
+    "type": 10,
+    "power": 100,
+    "accuracy": 90,
+    "pp": 10,
+    "effect": 4,
+    "targets_self": false
+  },
+  {
+    "id": 258,
+    "name": "HAIL",
+    "type": 15,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 10,
+    "effect": 164,
+    "targets_self": true
+  },
+  {
+    "id": 259,
+    "name": "TORMENT",
+    "type": 17,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 165,
+    "targets_self": false
+  },
+  {
+    "id": 260,
+    "name": "FLATTER",
+    "type": 17,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 166,
+    "targets_self": false
+  },
+  {
+    "id": 261,
+    "name": "WILL-O-WISP",
+    "type": 10,
+    "power": 0,
+    "accuracy": 75,
+    "pp": 15,
+    "effect": 167,
+    "targets_self": false
+  },
+  {
+    "id": 262,
+    "name": "MEMENTO",
+    "type": 17,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 168,
+    "targets_self": false
+  },
+  {
+    "id": 263,
+    "name": "FACADE",
+    "type": 0,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 169,
+    "targets_self": false
+  },
+  {
+    "id": 264,
+    "name": "FOCUS PUNCH",
+    "type": 1,
+    "power": 150,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 170,
+    "targets_self": false
+  },
+  {
+    "id": 265,
+    "name": "SMELLINGSALT",
+    "type": 0,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 171,
+    "targets_self": false
+  },
+  {
+    "id": 266,
+    "name": "FOLLOW ME",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 172,
+    "targets_self": true
+  },
+  {
+    "id": 267,
+    "name": "NATURE POWER",
+    "type": 0,
+    "power": 0,
+    "accuracy": 95,
+    "pp": 20,
+    "effect": 173,
+    "targets_self": false
+  },
+  {
+    "id": 268,
+    "name": "CHARGE",
+    "type": 13,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 174,
+    "targets_self": true
+  },
+  {
+    "id": 269,
+    "name": "TAUNT",
+    "type": 17,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 175,
+    "targets_self": false
+  },
+  {
+    "id": 270,
+    "name": "HELPING HAND",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 176,
+    "targets_self": true
+  },
+  {
+    "id": 271,
+    "name": "TRICK",
+    "type": 14,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 177,
+    "targets_self": false
+  },
+  {
+    "id": 272,
+    "name": "ROLE PLAY",
+    "type": 14,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 178,
+    "targets_self": false
+  },
+  {
+    "id": 273,
+    "name": "WISH",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 179,
+    "targets_self": true
+  },
+  {
+    "id": 274,
+    "name": "ASSIST",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 180,
+    "targets_self": false
+  },
+  {
+    "id": 275,
+    "name": "INGRAIN",
+    "type": 12,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 181,
+    "targets_self": true
+  },
+  {
+    "id": 276,
+    "name": "SUPERPOWER",
+    "type": 1,
+    "power": 120,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 182,
+    "targets_self": false
+  },
+  {
+    "id": 277,
+    "name": "MAGIC COAT",
+    "type": 14,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 183,
+    "targets_self": false
+  },
+  {
+    "id": 278,
+    "name": "RECYCLE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 184,
+    "targets_self": true
+  },
+  {
+    "id": 279,
+    "name": "REVENGE",
+    "type": 1,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 185,
+    "targets_self": false
+  },
+  {
+    "id": 280,
+    "name": "BRICK BREAK",
+    "type": 1,
+    "power": 75,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 186,
+    "targets_self": false
+  },
+  {
+    "id": 281,
+    "name": "YAWN",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 187,
+    "targets_self": false
+  },
+  {
+    "id": 282,
+    "name": "KNOCK OFF",
+    "type": 17,
+    "power": 20,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 188,
+    "targets_self": false
+  },
+  {
+    "id": 283,
+    "name": "ENDEAVOR",
+    "type": 0,
+    "power": 1,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 189,
+    "targets_self": false
+  },
+  {
+    "id": 284,
+    "name": "ERUPTION",
+    "type": 10,
+    "power": 150,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 190,
+    "targets_self": false
+  },
+  {
+    "id": 285,
+    "name": "SKILL SWAP",
+    "type": 14,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 191,
+    "targets_self": false
+  },
+  {
+    "id": 286,
+    "name": "IMPRISON",
+    "type": 14,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 192,
+    "targets_self": true
+  },
+  {
+    "id": 287,
+    "name": "REFRESH",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 193,
+    "targets_self": true
+  },
+  {
+    "id": 288,
+    "name": "GRUDGE",
+    "type": 7,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 194,
+    "targets_self": true
+  },
+  {
+    "id": 289,
+    "name": "SNATCH",
+    "type": 17,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 195,
+    "targets_self": false
+  },
+  {
+    "id": 290,
+    "name": "SECRET POWER",
+    "type": 0,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 197,
+    "targets_self": false
+  },
+  {
+    "id": 291,
+    "name": "DIVE",
+    "type": 11,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 155,
+    "targets_self": false
+  },
+  {
+    "id": 292,
+    "name": "ARM THRUST",
+    "type": 1,
+    "power": 15,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 293,
+    "name": "CAMOUFLAGE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 213,
+    "targets_self": true
+  },
+  {
+    "id": 294,
+    "name": "TAIL GLOW",
+    "type": 6,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 53,
+    "targets_self": true
+  },
+  {
+    "id": 295,
+    "name": "LUSTER PURGE",
+    "type": 14,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 72,
+    "targets_self": false
+  },
+  {
+    "id": 296,
+    "name": "MIST BALL",
+    "type": 14,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 71,
+    "targets_self": false
+  },
+  {
+    "id": 297,
+    "name": "FEATHERDANCE",
+    "type": 2,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 58,
+    "targets_self": false
+  },
+  {
+    "id": 298,
+    "name": "TEETER DANCE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 199,
+    "targets_self": false
+  },
+  {
+    "id": 299,
+    "name": "BLAZE KICK",
+    "type": 10,
+    "power": 85,
+    "accuracy": 90,
+    "pp": 10,
+    "effect": 200,
+    "targets_self": false
+  },
+  {
+    "id": 300,
+    "name": "MUD SPORT",
+    "type": 4,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 201,
+    "targets_self": true
+  },
+  {
+    "id": 301,
+    "name": "ICE BALL",
+    "type": 15,
+    "power": 30,
+    "accuracy": 90,
+    "pp": 20,
+    "effect": 117,
+    "targets_self": false
+  },
+  {
+    "id": 302,
+    "name": "NEEDLE ARM",
+    "type": 12,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 303,
+    "name": "SLACK OFF",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 32,
+    "targets_self": true
+  },
+  {
+    "id": 304,
+    "name": "HYPER VOICE",
+    "type": 0,
+    "power": 90,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 305,
+    "name": "POISON FANG",
+    "type": 3,
+    "power": 50,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 202,
+    "targets_self": false
+  },
+  {
+    "id": 306,
+    "name": "CRUSH CLAW",
+    "type": 0,
+    "power": 75,
+    "accuracy": 95,
+    "pp": 10,
+    "effect": 69,
+    "targets_self": false
+  },
+  {
+    "id": 307,
+    "name": "BLAST BURN",
+    "type": 10,
+    "power": 150,
+    "accuracy": 90,
+    "pp": 5,
+    "effect": 80,
+    "targets_self": false
+  },
+  {
+    "id": 308,
+    "name": "HYDRO CANNON",
+    "type": 11,
+    "power": 150,
+    "accuracy": 90,
+    "pp": 5,
+    "effect": 80,
+    "targets_self": false
+  },
+  {
+    "id": 309,
+    "name": "METEOR MASH",
+    "type": 8,
+    "power": 100,
+    "accuracy": 85,
+    "pp": 10,
+    "effect": 139,
+    "targets_self": false
+  },
+  {
+    "id": 310,
+    "name": "ASTONISH",
+    "type": 7,
+    "power": 30,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 311,
+    "name": "WEATHER BALL",
+    "type": 0,
+    "power": 50,
+    "accuracy": 100,
+    "pp": 10,
+    "effect": 203,
+    "targets_self": false
+  },
+  {
+    "id": 312,
+    "name": "AROMATHERAPY",
+    "type": 12,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 5,
+    "effect": 102,
+    "targets_self": true
+  },
+  {
+    "id": 313,
+    "name": "FAKE TEARS",
+    "type": 17,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 62,
+    "targets_self": false
+  },
+  {
+    "id": 314,
+    "name": "AIR CUTTER",
+    "type": 2,
+    "power": 55,
+    "accuracy": 95,
+    "pp": 25,
+    "effect": 43,
+    "targets_self": false
+  },
+  {
+    "id": 315,
+    "name": "OVERHEAT",
+    "type": 10,
+    "power": 140,
+    "accuracy": 90,
+    "pp": 5,
+    "effect": 204,
+    "targets_self": false
+  },
+  {
+    "id": 316,
+    "name": "ODOR SLEUTH",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 40,
+    "effect": 113,
+    "targets_self": false
+  },
+  {
+    "id": 317,
+    "name": "ROCK TOMB",
+    "type": 5,
+    "power": 50,
+    "accuracy": 80,
+    "pp": 10,
+    "effect": 70,
+    "targets_self": false
+  },
+  {
+    "id": 318,
+    "name": "SILVER WIND",
+    "type": 6,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 140,
+    "targets_self": false
+  },
+  {
+    "id": 319,
+    "name": "METAL SOUND",
+    "type": 8,
+    "power": 0,
+    "accuracy": 85,
+    "pp": 40,
+    "effect": 62,
+    "targets_self": false
+  },
+  {
+    "id": 320,
+    "name": "GRASSWHISTLE",
+    "type": 12,
+    "power": 0,
+    "accuracy": 55,
+    "pp": 15,
+    "effect": 1,
+    "targets_self": false
+  },
+  {
+    "id": 321,
+    "name": "TICKLE",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 205,
+    "targets_self": false
+  },
+  {
+    "id": 322,
+    "name": "COSMIC POWER",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 206,
+    "targets_self": true
+  },
+  {
+    "id": 323,
+    "name": "WATER SPOUT",
+    "type": 11,
+    "power": 150,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 190,
+    "targets_self": false
+  },
+  {
+    "id": 324,
+    "name": "SIGNAL BEAM",
+    "type": 6,
+    "power": 75,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 76,
+    "targets_self": false
+  },
+  {
+    "id": 325,
+    "name": "SHADOW PUNCH",
+    "type": 7,
+    "power": 60,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 17,
+    "targets_self": false
+  },
+  {
+    "id": 326,
+    "name": "EXTRASENSORY",
+    "type": 14,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 327,
+    "name": "SKY UPPERCUT",
+    "type": 1,
+    "power": 85,
+    "accuracy": 90,
+    "pp": 15,
+    "effect": 207,
+    "targets_self": false
+  },
+  {
+    "id": 328,
+    "name": "SAND TOMB",
+    "type": 4,
+    "power": 15,
+    "accuracy": 70,
+    "pp": 15,
+    "effect": 42,
+    "targets_self": false
+  },
+  {
+    "id": 329,
+    "name": "SHEER COLD",
+    "type": 15,
+    "power": 1,
+    "accuracy": 30,
+    "pp": 5,
+    "effect": 38,
+    "targets_self": false
+  },
+  {
+    "id": 330,
+    "name": "MUDDY WATER",
+    "type": 11,
+    "power": 95,
+    "accuracy": 85,
+    "pp": 10,
+    "effect": 73,
+    "targets_self": false
+  },
+  {
+    "id": 331,
+    "name": "BULLET SEED",
+    "type": 12,
+    "power": 10,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 332,
+    "name": "AERIAL ACE",
+    "type": 2,
+    "power": 60,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 17,
+    "targets_self": false
+  },
+  {
+    "id": 333,
+    "name": "ICICLE SPEAR",
+    "type": 15,
+    "power": 10,
+    "accuracy": 100,
+    "pp": 30,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 334,
+    "name": "IRON DEFENSE",
+    "type": 8,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 15,
+    "effect": 51,
+    "targets_self": true
+  },
+  {
+    "id": 335,
+    "name": "BLOCK",
+    "type": 0,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 5,
+    "effect": 106,
+    "targets_self": false
+  },
+  {
+    "id": 336,
+    "name": "HOWL",
+    "type": 0,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 40,
+    "effect": 10,
+    "targets_self": true
+  },
+  {
+    "id": 337,
+    "name": "DRAGON CLAW",
+    "type": 16,
+    "power": 80,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 0,
+    "targets_self": false
+  },
+  {
+    "id": 338,
+    "name": "FRENZY PLANT",
+    "type": 12,
+    "power": 150,
+    "accuracy": 90,
+    "pp": 5,
+    "effect": 80,
+    "targets_self": false
+  },
+  {
+    "id": 339,
+    "name": "BULK UP",
+    "type": 1,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 208,
+    "targets_self": true
+  },
+  {
+    "id": 340,
+    "name": "BOUNCE",
+    "type": 2,
+    "power": 85,
+    "accuracy": 85,
+    "pp": 5,
+    "effect": 155,
+    "targets_self": false
+  },
+  {
+    "id": 341,
+    "name": "MUD SHOT",
+    "type": 4,
+    "power": 55,
+    "accuracy": 95,
+    "pp": 15,
+    "effect": 70,
+    "targets_self": false
+  },
+  {
+    "id": 342,
+    "name": "POISON TAIL",
+    "type": 3,
+    "power": 50,
+    "accuracy": 100,
+    "pp": 25,
+    "effect": 209,
+    "targets_self": false
+  },
+  {
+    "id": 343,
+    "name": "COVET",
+    "type": 0,
+    "power": 40,
+    "accuracy": 100,
+    "pp": 40,
+    "effect": 105,
+    "targets_self": false
+  },
+  {
+    "id": 344,
+    "name": "VOLT TACKLE",
+    "type": 13,
+    "power": 120,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 198,
+    "targets_self": false
+  },
+  {
+    "id": 345,
+    "name": "MAGICAL LEAF",
+    "type": 12,
+    "power": 60,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 17,
+    "targets_self": false
+  },
+  {
+    "id": 346,
+    "name": "WATER SPORT",
+    "type": 11,
+    "power": 0,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 210,
+    "targets_self": true
+  },
+  {
+    "id": 347,
+    "name": "CALM MIND",
+    "type": 14,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 211,
+    "targets_self": true
+  },
+  {
+    "id": 348,
+    "name": "LEAF BLADE",
+    "type": 12,
+    "power": 70,
+    "accuracy": 100,
+    "pp": 15,
+    "effect": 43,
+    "targets_self": false
+  },
+  {
+    "id": 349,
+    "name": "DRAGON DANCE",
+    "type": 16,
+    "power": 0,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 212,
+    "targets_self": true
+  },
+  {
+    "id": 350,
+    "name": "ROCK BLAST",
+    "type": 5,
+    "power": 25,
+    "accuracy": 80,
+    "pp": 10,
+    "effect": 29,
+    "targets_self": false
+  },
+  {
+    "id": 351,
+    "name": "SHOCK WAVE",
+    "type": 13,
+    "power": 60,
+    "accuracy": 0,
+    "pp": 20,
+    "effect": 17,
+    "targets_self": false
+  },
+  {
+    "id": 352,
+    "name": "WATER PULSE",
+    "type": 11,
+    "power": 60,
+    "accuracy": 100,
+    "pp": 20,
+    "effect": 76,
+    "targets_self": false
+  },
+  {
+    "id": 353,
+    "name": "DOOM DESIRE",
+    "type": 8,
+    "power": 120,
+    "accuracy": 85,
+    "pp": 5,
+    "effect": 148,
+    "targets_self": false
+  },
+  {
+    "id": 354,
+    "name": "PSYCHO BOOST",
+    "type": 14,
+    "power": 140,
+    "accuracy": 90,
+    "pp": 5,
+    "effect": 204,
+    "targets_self": false
+  }
+]

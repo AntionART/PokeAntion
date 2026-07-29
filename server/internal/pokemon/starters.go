@@ -12,7 +12,7 @@ const (
 	SpeciesMudkip  = 283
 )
 
-type baseStats struct {
+type BaseStats struct {
 	HP, Attack, Defense, Speed, SpAttack, SpDefense int
 }
 
@@ -21,55 +21,30 @@ type move struct {
 	PP     int
 }
 
-var starterBaseStats = map[int]baseStats{
-	SpeciesTreecko: {HP: 40, Attack: 45, Defense: 35, Speed: 70, SpAttack: 65, SpDefense: 55},
-	SpeciesTorchic: {HP: 45, Attack: 60, Defense: 40, Speed: 45, SpAttack: 70, SpDefense: 50},
-	SpeciesMudkip:  {HP: 50, Attack: 70, Defense: 50, Speed: 40, SpAttack: 50, SpDefense: 50},
-}
-
 // Movimientos que cada inicial ya sabe a nivel 1 (los únicos relevantes a nivel 5): Pound/Leer,
 // Scratch/Growl, Tackle/Growl. Move IDs de include/constants/moves.h, PP de src/data/battle_moves.h.
+// Coincide exactamente con data/pokemon/learnsets.json (generado por server/cmd/gendata desde
+// level_up_learnsets.h, agregado para armar el moveset de Pokémon salvajes atrapados, ver
+// server/internal/wildencounter) — se deja hardcodeado acá en vez de leer ese archivo porque
+// AddStarter es un caso fijo de 3 especies a nivel 5 siempre, no vale la pena la indirección.
 var starterMoves = map[int][2]move{
 	SpeciesTreecko: {{MoveID: 1, PP: 35}, {MoveID: 43, PP: 30}},
 	SpeciesTorchic: {{MoveID: 10, PP: 35}, {MoveID: 45, PP: 40}},
 	SpeciesMudkip:  {{MoveID: 33, PP: 35}, {MoveID: 45, PP: 40}},
 }
 
-// starterName es el nombre que el propio juego le pone a un Pokémon sin apodo (nombre de la
-// especie en mayúsculas) — no hay tabla de nombres en el servidor todavía, así que se hardcodea
-// solo para estos 3, en vez de traer toda la tabla de species_info.h por un nombre de display.
-var starterName = map[int]string{
-	SpeciesTreecko: "TREECKO",
-	SpeciesTorchic: "TORCHIC",
-	SpeciesMudkip:  "MUDKIP",
-}
-
-// Tipo(s) de cada inicial — IDs numéricos idénticos a battle.TypeXxx (no se importa ese
-// paquete acá para evitar un ciclo pokemon<->battle; son constantes de include/constants/
-// pokemon.h de pokeemerald, no una decisión de diseño nuestra, así que duplicarlas como
-// números crudos con este comentario alcanza). 12=Grass, 10=Fire, 11=Water.
-var starterTypes = map[int][2]int{
-	SpeciesTreecko: {12, 12},
-	SpeciesTorchic: {10, 10},
-	SpeciesMudkip:  {11, 11},
-}
-
-// SpeciesTypes devuelve (tipo1, tipo2) de una especie soportada (ver IsValidStarter) — tipo2
-// == tipo1 si es de un solo tipo, mismo criterio que battle.Combatant.
-func SpeciesTypes(species int) (int, int) {
-	t := starterTypes[species]
-	return t[0], t[1]
-}
+// El nombre y las estadísticas base de cada inicial ya NO se hardcodean acá — salen del
+// catálogo completo (ver species_catalog.go: SpeciesName/SpeciesBaseStats), la misma fuente
+// que cualquier otra especie.
 
 func IsValidStarter(species int) bool {
-	_, ok := starterBaseStats[species]
-	return ok
+	return species == SpeciesTreecko || species == SpeciesTorchic || species == SpeciesMudkip
 }
 
-// computeStatsAtLevel: misma fórmula que Gen3Codec.ComputeStatsAtLevel (C#) — estándar de Gen3
+// ComputeStatsAtLevel: misma fórmula que Gen3Codec.ComputeStatsAtLevel (C#) — estándar de Gen3
 // (idéntica en todas las generaciones 3-7, no específica de esta ROM). IVs=0/EVs=0/naturaleza
 // neutra, misma simplificación deliberada que el lado cliente.
-func computeStatsAtLevel(b baseStats, level int) (hp, attack, defense, speed, spAttack, spDefense int) {
+func ComputeStatsAtLevel(b BaseStats, level int) (hp, attack, defense, speed, spAttack, spDefense int) {
 	other := func(base int) int { return (2*base)*level/100 + 5 }
 	hp = (2*b.HP)*level/100 + level + 10
 	attack = other(b.Attack)
@@ -77,5 +52,19 @@ func computeStatsAtLevel(b baseStats, level int) (hp, attack, defense, speed, sp
 	speed = other(b.Speed)
 	spAttack = other(b.SpAttack)
 	spDefense = other(b.SpDefense)
+	return
+}
+
+// ComputeStatsWithIVs: misma fórmula real de Gen3, pero con IVs reales (no todos en 0) — para
+// un Pokémon salvaje atrapado de verdad (ver AddCaught), a diferencia de un inicial regalado
+// (AddStarter, que sigue en IV=0 sin cambios). EVs siguen en 0 (recién atrapado, sin entrenar).
+func ComputeStatsWithIVs(b BaseStats, level int, ivs [6]int) (hp, attack, defense, speed, spAttack, spDefense int) {
+	other := func(base, iv int) int { return (2*base+iv)*level/100 + 5 }
+	hp = (2*b.HP+ivs[0])*level/100 + level + 10
+	attack = other(b.Attack, ivs[1])
+	defense = other(b.Defense, ivs[2])
+	speed = other(b.Speed, ivs[3])
+	spAttack = other(b.SpAttack, ivs[4])
+	spDefense = other(b.SpDefense, ivs[5])
 	return
 }

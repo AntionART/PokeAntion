@@ -9,10 +9,19 @@
 
   "_ARQUITECTURA_IMPORTANTE": "2026-07-21: descubrimos (con el .sav completo de prueba + el código fuente real de pokeemerald, ver Pokemon Esmeralda/pokeemerald-master) que gSaveBlock1Ptr/gSaveBlock2Ptr son PUNTEROS a memoria reservada dinámicamente (heap) que SE REALOCAN durante la partida (confirmado: cambió de 0x02025A38 a 0x02025A68 entre dos capturas separadas por unos minutos de juego normal, sin reiniciar nada). Esto invalida el modelo de 'dirección fija por ROM' para TODO lo que cuelga de SaveBlock1/2 (posición, equipo, dinero, flags) — no es como map_number_address, que sí es estable. La única forma confiable es indirección de puntero: leer un u32 en una dirección FIJA de IWRAM (esa sí es estable, es la variable global gSaveBlock1Ptr/gSaveBlock2Ptr en sí) y sumarle el offset del campo. RomLoader/IMemoryAdapter todavía NO implementa esta indirección (pendiente, ver romloader_refactor.md) — placeholder por ahora.",
 
+  "wild_battle_signal": {
+    "gmain_callback1_address": "0x03005D00",
+    "gmain_callback2_address": "0x03005D04",
+    "overworld_callback2_value": "0x0803DF71",
+    "_validation": "HEREDADO de emerald_es.json (BPES), CONFIRMADO EN VIVO ahí 2026-07-28 — no repetido independientemente contra esta ROM (BPEE/US) todavía. Misma confianza estructural que map_group_offset_validacion de arriba: ES/US comparten layout de código/structs compilado byte a byte, y este offset cae en el mismo vecindario de globals estáticos de IWRAM que save_block1_pointer_address (0x03005D8C, ya confirmado en ambas ROMs sin cambios). Ver emerald_es.json wild_battle_signal._validation para la metodología completa (par gMain.callback1/callback2, callback1 constante, callback2 cambia de 0x0803DF71 a 0x0803B3CD durante una pelea salvaje nativa real).",
+    "_pendiente": "Los VALORES concretos de callback2 (overworld_callback2_value y el valor 'en batalla') son direcciones de función dentro del binario compilado — si BPES y BPEE difieren en la más mínima disposición de código (aunque compartan el layout de structs), estos valores específicos podrían no coincidir 1:1 incluso si la DIRECCIÓN 0x03005D04 sigue siendo la correcta para encontrar gMain.callback2. Antes de usar esto en producción contra esta ROM, repetir la validación en vivo (--dump-iwram, caminando vs. en una pelea salvaje real) para confirmar los valores concretos."
+  },
+
   "save_block_pointers": {
     "save_block1_pointer_address": "0x03005D8C",
     "save_block2_pointer_address": "0x03005D90",
     "pos_offset": "0x00",
+    "map_group_offset": "0x04",
     "map_num_offset": "0x05",
     "player_party_offset": "0x238",
     "player_party_count_offset": "0x234",
@@ -20,7 +29,8 @@
     "flags_offset": "0x1270",
     "encryption_key_offset": "0xAC",
     "_validation": "Encontrados por escaneo de IWRAM buscando qué dirección de 4 bytes apunta exactamente a la base de SaveBlock1/SaveBlock2 ya identificadas por otros medios (gPlayerParty conocido + offset de struct real de pokeemerald, y nombre de entrenador en texto plano respectivamente). Confirmado estable: la RANURA en IWRAM no se mueve nunca (es una variable global estática), aunque el VALOR que contiene sí cambia cuando el juego realoca el save block. SIEMPRE releer el puntero antes de cada acceso, nunca cachear la dirección resuelta de SaveBlock1/2 entre frames — GbaMemoryAdapter.GetMoney()/GetParty()/GetPlayerPosition() ya lo hacen así.",
-    "offsets_confirmados_con_codigo_fuente_real": "pos=+0x00 (Coords16 x,y), location.mapNum=+0x05, playerPartyCount=+0x234, playerParty=+0x238 (6x100 bytes), money=+0x490 (u32 XOR encryptionKey), flags=+0x1270; SaveBlock2: encryptionKey=+0xAC, playerName=+0x00 (8 bytes charset Gen3), playerTrainerId=+0x0A (4 bytes, texto plano), playTimeHours=+0x0E (u16), playTimeMinutes=+0x10 (u8).",
+    "map_group_offset_validacion": "CONFIRMADO EN VIVO para emerald_es (BPES) 2026-07-27 — ver ese archivo para el detalle completo (mapGroup/mapNum leídos en tiempo real cruzando 3 transiciones de mapa distintas durante una partida nueva jugada de verdad, todos los valores coincidieron exactamente con lo esperado, incluido mapGroup=0/mapNum=9 para Villa Raíz que coincide con data/pokemon/maps.json). NO se repitió la prueba en vivo específicamente contra esta ROM (BPEE/US) esta sesión (no se jugó una partida nueva en US), pero save_block_pointers._validation de este mismo archivo ya documenta que ES y US comparten el mismo layout de código/structs compilado byte a byte (probado con el mismo .sav de 8 medallas contra ambas ROMs, resultados idénticos) — la confianza para US pasa de 'estructural' a 'heredada de una confirmación en vivo real', un escalón más fuerte que antes, aunque no sea todavía una prueba directa en esta ROM específica.",
+    "offsets_confirmados_con_codigo_fuente_real": "pos=+0x00 (Coords16 x,y), location.mapGroup=+0x04, location.mapNum=+0x05, playerPartyCount=+0x234, playerParty=+0x238 (6x100 bytes), money=+0x490 (u32 XOR encryptionKey), flags=+0x1270; SaveBlock2: encryptionKey=+0xAC, playerName=+0x00 (8 bytes charset Gen3), playerTrainerId=+0x0A (4 bytes, texto plano), playTimeHours=+0x0E (u16), playTimeMinutes=+0x10 (u8).",
     "gPlayerParty_estatico": "0x020244EC — copia EWRAM_DATA separada (NO es SaveBlock1->playerParty), fija entre sesiones porque es un global estático, no heap. Confirmado con Torchic (species 280) y luego con el equipo completo del .sav (Jirachi 409 en slot 0, mismo domicilio exacto en ambas partidas). No se usa en el adaptador todavía (GetParty lee de SaveBlock1->playerParty, la copia persistida).",
     "dinero_validado": "320680 — desencriptado dos veces de forma independiente (dos resoluciones de puntero distintas, mismo resultado exacto) contra el .sav completo de prueba (8 medallas). Algoritmo Gen3Codec.DecryptMoney confirmado correcto."
   },

@@ -53,6 +53,14 @@ func NewHub() *Hub {
 	}
 }
 
+// Count devuelve cuántos jugadores están conectados ahora mismo — usado por /server-status
+// para que el Launcher muestre "jugadores conectados" (ver main.go handleServerStatus).
+func (h *Hub) Count() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.clients)
+}
+
 func (h *Hub) Register(c *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()

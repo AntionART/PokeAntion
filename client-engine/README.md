@@ -23,10 +23,12 @@ servidor (`/register`, JWT — ver `server/`), el cliente **no** va a pasar al j
 introducción/tutorial de un jugador de la ROM (logo animado, "PARTIDA NUEVA", elegir nombre,
 cinemática del profesor Birch). En su lugar, el motor propio va a tener sus propias pantallas
 de **login/creación de cuenta**, **selección de ROM** (entre las que el servidor soporte, ver
-`memory-maps/`) y **configuración**, y recién ahí cargar la ROM ya "saltada" directo al mundo
-(vía un save state inicial por ROM, o inyectando el estado del personaje). Esto es trabajo de
-Fase D.4/F, todavía no implementado — hoy `ClientApp` sigue arrancando por el flujo completo
-de la ROM porque así es como se validó D.1-D.3 (ver más abajo).
+`memory-maps/`) y **configuración**. **Ya implementado** (`Screens/LoginFlow.cs`): login,
+registro (con elección de inicial), y selección de ROM, las 4 dibujadas como un panel
+enmarcado centrado (fondo oscuro, borde de acento magenta, título dorado, campos con caja y
+resaltado de foco en cian, filas de lista con highlight — mismo lenguaje visual "cyberpunk-
+trainer" de `Theme.cs` que ya usa `BattleScreen`) en vez del texto plano sin estilo de las
+primeras versiones. Ver sección D.5 más abajo.
 
 ## D.1 — Prueba de concepto: cargar el core y leer RAM (✅ hecho y verificado)
 
@@ -240,6 +242,57 @@ posicionado 3 tiles a la derecha y 2 abajo del jugador local conocido): el cuadr
 aparece exactamente en esa posición relativa en el framebuffer capturado — confirma que
 Fase E (datos de otros jugadores) y D.2b (dibujarlos) funcionan juntos de punta a punta.
 
+## D.5 — Paneles de inicio con estilo real (✅ hecho y verificado, 2026-07-27)
+
+`Screens/LoginFlow.cs` pasó de dibujar texto plano sin ningún elemento visual (líneas de texto
+flotando sobre negro) a una tarjeta centrada con marco, en la misma línea de diseño que
+`BattleScreen` (que ya usaba `Renderer.AddRect` para el cuadro de mensaje/HP bars/menús
+resaltados desde la Fase battle-3/4): fondo de tarjeta (`Theme.NeutralDark`), borde de acento
+magenta (`Theme.Secondary`) en las 4 aristas, título "POKÉMON ONLINE" en dorado
+(`Theme.Tertiary`) centrado con una barra de acento cian debajo, campos de texto dibujados como
+cajas con borde (simulado con dos `AddRect` superpuestos, ver `DrawField`) que cambian de color
+al tener foco, y filas de lista (inicial a elegir, ROM a elegir) con un rectángulo de highlight
+semitransparente detrás de la fila seleccionada (`DrawListRow`) — mismo patrón que los menús de
+`BattleScreen`. Pedido explícito del usuario: que las pantallas donde el jugador abre el juego
+se vean como una interfaz real de juego (referencia: PokeMMO), no como texto de depuración.
+
+**Verificado con evidencia real**, no solo "compiló": capturas del backbuffer real (mismo
+mecanismo de `--dump-frame`/`CaptureToFile` que el resto del proyecto) confirmaron la pantalla
+de Login completa con el marco/título/cajas de campo, y una prueba con `keybd_event` (ver
+[[live-ui-testing-environment]] en memoria) moviendo el foco con Tab confirmó que la caja de
+campo enfocado cambia de color correctamente en un frame real renderizado. Registro/elegir
+inicial/elegir ROM comparten exactamente los mismos métodos de dibujo (`DrawField`/
+`DrawListRow`/`DrawHint`) ya verificados en vivo para Login, así que no se repitió la captura
+para cada pantalla — mismo código, mismo resultado.
+
+## D.6 — Empaquetado self-contained (✅ hecho y verificado, 2026-07-27)
+
+`powershell -File .\scripts\publish-client.ps1` (`dotnet publish -c Release -r win-x64
+--self-contained true`) genera `ClientApp/bin/publish-win-x64/` con el runtime de .NET incluido
+— una PC destino no necesita tener .NET instalado, solo copiar la carpeta.
+
+Esto requirió arreglar una fragilidad real: `Program.cs` resolvía la raíz del repo con una
+cuenta fija de `..\..\..\..\..` a partir de `AppContext.BaseDirectory`, asumiendo la
+profundidad exacta de `bin/Debug/net10.0-windows/` — un publish (`bin/Release/.../win-x64/` o
+`.../publish/`) tiene una profundidad distinta y esa cuenta se habría roto en silencio. Se
+reemplazó por `FindRepoRoot` (sube directorios hasta encontrar `memory-maps/` + `data/pokemon/`
+juntos, únicos de este repo), con la cuenta fija vieja como último recurso si no se encuentran
+— robusto a cualquier configuración de build futura, no solo a esta.
+
+**Verificado con evidencia real**: el `.exe` publicado, corrido desde su carpeta de publish
+(profundidad distinta a un build de desarrollo), se conectó al servidor real y una captura de
+`--debug-battle` confirmó sprites/catálogo de especies/datos todos cargados correctamente
+(mismos assets, mismo resultado que un build de desarrollo).
+
+**Limitación real, no resuelta ni buscada por este cambio** (ver sección 8 del README raíz,
+"nunca se distribuyen ROMs ni assets de Nintendo/Game Freak"): esto NO es un instalador "click
+y listo" en una PC
+sin nada más — el `.exe` sigue necesitando el resto del repo al lado (`memory-maps/`,
+`data/pokemon/`, el checkout de `pokeemerald-master` para sprites) y la ROM propia del usuario
+(nunca se distribuye). "Empaquetado" acá significa "no hace falta instalar .NET", no "el repo
+entero deja de hacer falta" — eso sería una re-arquitectura de assets mucho más grande, fuera
+de alcance de este cambio.
+
 ## Próximos pasos (pendientes, no implementados todavía)
 
 - Sprites reales en vez de cuadrados de color (necesita arte, o extraer sprites de la ROM).
@@ -249,7 +302,12 @@ Fase E (datos de otros jugadores) y D.2b (dibujarlos) funcionan juntos de punta 
   `gSaveBlock1Ptr` en vez de asumir una dirección fija (ver nota en `memory-maps/emerald_es.json`).
 - Sacar el `map_id` hardcodeado una vez validado `map_bank`/`map_number`.
 - Arrancar el cliente directo en el mundo (saltar el flujo de un jugador de la ROM), con
-  login/selección de ROM propios — ver la nota de decisión de producto más arriba.
+  login/selección de ROM propios — ver la nota de decisión de producto más arriba (las
+  pantallas ya existen, sección D.5; falta el salto directo al mundo sin pasar por la
+  introducción real de la ROM).
+- Soporte de mouse (hoy 100% teclado, deliberado — ver comentario de clase en `LoginFlow`).
+- Un indicador de "servidor en línea"/jugadores conectados en la pantalla de Login (mejora de
+  UX tipo PokeMMO, no implementado todavía — requeriría un endpoint nuevo del servidor).
 
 ## ROM(s) de referencia
 

@@ -24,6 +24,9 @@ import (
 var (
 	ErrInvalidSpecies  = errors.New("especie no es un inicial válido")
 	ErrNoActivePokemon = errors.New("el personaje no tiene un pokémon activo (slot 0) todavía")
+	ErrTeamFull        = errors.New("el equipo ya tiene 6 Pokémon (todavía no hay PC accesible para guardar más)")
+	ErrInvalidMoveSlot = errors.New("slot de movimiento inválido")
+	ErrNotOwner        = errors.New("el pokémon no te pertenece")
 )
 
 type Service struct {
@@ -166,7 +169,11 @@ func (s *Service) AddStarter(characterID string, species int) (Pokemon, error) {
 		return Pokemon{}, ErrInvalidSpecies
 	}
 
-	hp, attack, defense, speed, spAttack, spDefense := computeStatsAtLevel(starterBaseStats[species], 5)
+	base, ok := SpeciesBaseStats(species)
+	if !ok {
+		return Pokemon{}, fmt.Errorf("especie %d no está en el catálogo de especies", species)
+	}
+	hp, attack, defense, speed, spAttack, spDefense := ComputeStatsAtLevel(base, 5)
 	starterMoveList := starterMoves[species]
 	personality := randomUint32()
 	nature := int(personality % 25)
@@ -181,7 +188,7 @@ func (s *Service) AddStarter(characterID string, species int) (Pokemon, error) {
 	}
 
 	p := Pokemon{
-		ID: uuid.NewString(), Species: species, Nickname: starterName[species], Level: 5, Experience: 0,
+		ID: uuid.NewString(), Species: species, Nickname: SpeciesName(species), Level: 5, Experience: 0,
 		Personality: personality, OtId: randomUint32(),
 		CurrentHP: hp, MaxHP: hp, Attack: attack, Defense: defense, Speed: speed,
 		SpAttack: spAttack, SpDefense: spDefense, Moves: moves, TeamSlot: 0,
@@ -202,6 +209,271 @@ func (s *Service) AddStarter(characterID string, species int) (Pokemon, error) {
 		return Pokemon{}, fmt.Errorf("guardando inicial: %w", err)
 	}
 	return p, nil
+}
+
+// AddCaught crea un Pokémon recién atrapado en un encuentro salvaje (ver
+// server/internal/wildencounter) — a diferencia de AddStarter (nivel fijo 5, solo 3 especies),
+// acepta cualquier especie/nivel real del catálogo, movimientos reales del learnset, e IVs
+// reales al azar (0-31 por stat, no todos en 0 como los iniciales — sí importan acá porque
+// viene de un encuentro real, no de un regalo fijo). Va a team si hay lugar (<6 miembros);
+// si no, ErrTeamFull (no hay PC accesible todavía para guardar de más, ver roadmap).
+func (s *Service) AddCaught(characterID string, species, level int, moves []MoveSlot, personality, otID uint32, ivs [6]int) (Pokemon, error) {
+	base, ok := SpeciesBaseStats(species)
+	if !ok {
+		return Pokemon{}, fmt.Errorf("especie %d no está en el catálogo de especies", species)
+	}
+
+	var teamCount int
+	if err := s.db.QueryRow(`SELECT count(*) FROM pokemon WHERE owner_char_id = $1 AND location = 'team'`, characterID).Scan(&teamCount); err != nil {
+		return Pokemon{}, fmt.Errorf("contando equipo: %w", err)
+	}
+	if teamCount >= 6 {
+		return Pokemon{}, ErrTeamFull
+	}
+	var nextSlot sql.NullInt64
+	if err := s.db.QueryRow(`SELECT max(team_slot) FROM pokemon WHERE owner_char_id = $1 AND location = 'team'`, characterID).Scan(&nextSlot); err != nil {
+		return Pokemon{}, fmt.Errorf("calculando próximo slot: %w", err)
+	}
+	teamSlot := 0
+	if nextSlot.Valid {
+		teamSlot = int(nextSlot.Int64) + 1
+	}
+
+	hp, attack, defense, speed, spAttack, spDefense := ComputeStatsWithIVs(base, level, ivs)
+	nature := int(personality % 25)
+	movesJSON, err := json.Marshal(moves)
+	if err != nil {
+		return Pokemon{}, fmt.Errorf("serializando moves: %w", err)
+	}
+	ivsJSON, err := json.Marshal(map[string]int{
+		"hp": ivs[0], "attack": ivs[1], "defense": ivs[2], "speed": ivs[3], "sp_attack": ivs[4], "sp_defense": ivs[5],
+	})
+	if err != nil {
+		return Pokemon{}, fmt.Errorf("serializando IVs: %w", err)
+	}
+
+	p := Pokemon{
+		ID: uuid.NewString(), Species: species, Nickname: SpeciesName(species), Level: level, Experience: 0,
+		Personality: personality, OtId: otID,
+		CurrentHP: hp, MaxHP: hp, Attack: attack, Defense: defense, Speed: speed,
+		SpAttack: spAttack, SpDefense: spDefense, Moves: moves, TeamSlot: teamSlot,
+	}
+
+	_, err = s.db.Exec(
+		`INSERT INTO pokemon (id, owner_char_id, species_id, nickname, level, experience,
+		                       personality, ot_id, hp_current, hp_max,
+		                       stat_attack, stat_defense, stat_speed, stat_sp_attack, stat_sp_defense,
+		                       nature, moves, ivs, original_trainer_id, location, team_slot)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'team',$20)`,
+		p.ID, characterID, p.Species, p.Nickname, p.Level, p.Experience,
+		int64(p.Personality), int64(p.OtId), p.CurrentHP, p.MaxHP,
+		p.Attack, p.Defense, p.Speed, p.SpAttack, p.SpDefense,
+		nature, movesJSON, ivsJSON, characterID, p.TeamSlot,
+	)
+	if err != nil {
+		return Pokemon{}, fmt.Errorf("guardando pokémon atrapado: %w", err)
+	}
+
+	// pokedex_entries: marcar visto+atrapado — no falla la captura si esto falla (el Pokémon
+	// ya es dueño del jugador de todas formas, la Pokédex es solo un registro informativo).
+	_, err = s.db.Exec(
+		`INSERT INTO pokedex_entries (owner_char_id, species_id, seen, caught, first_seen_at, first_caught_at)
+		 VALUES ($1, $2, true, true, now(), now())
+		 ON CONFLICT (owner_char_id, species_id) DO UPDATE SET
+		   caught = true, seen = true,
+		   first_caught_at = COALESCE(pokedex_entries.first_caught_at, now())`,
+		characterID, species,
+	)
+	if err != nil {
+		return p, fmt.Errorf("guardando entrada de pokédex (pokémon ya se guardó bien): %w", err)
+	}
+	return p, nil
+}
+
+// AddExperience suma experiencia real a un Pokémon tras vencer a uno salvaje (ver
+// server/internal/wildencounter) — el ÚNICO lugar donde algo gana experiencia hoy (PvP nunca
+// la otorga, ver el comentario en battlesession.resolveExchange). Sube de nivel con la curva de
+// experiencia REAL de la especie (growth_rate del catálogo, ver expForLevel) — ya no una única
+// curva universal para todas. learnedMoveIDs son los movimientos que la especie aprende en el
+// rango de niveles saltado (puede ser más de uno si una sola pelea alcanza para varios
+// niveles) — el LLAMADOR decide qué hacer con ellos (ver wildencounter.translateAndPersist +
+// LearnMove), esta función no toca la columna `moves` para no mezclar responsabilidades (mismo
+// criterio que AddCaught, que recibe moves ya armados en vez de armarlos acá).
+func (s *Service) AddExperience(pokemonID string, gainedExp int) (leveledUp bool, newLevel int, learnedMoveIDs []int, err error) {
+	var species, level, experience, hpCurrent, hpMax int
+	err = s.db.QueryRow(`SELECT species_id, level, experience, hp_current, hp_max FROM pokemon WHERE id = $1`, pokemonID).
+		Scan(&species, &level, &experience, &hpCurrent, &hpMax)
+	if err != nil {
+		return false, 0, nil, fmt.Errorf("consultando pokémon para experiencia: %w", err)
+	}
+	if level >= 100 {
+		return false, level, nil, nil
+	}
+
+	// Especie sin growth_rate conocido (no debería pasar con el catálogo real): cae a Medium
+	// Fast (0), la curva más común, en vez de fallar la operación entera.
+	growthRate, _ := SpeciesGrowthRate(species)
+
+	newExperience := experience + gainedExp
+	newLvl := level
+	for newLvl < 100 && newExperience >= expForLevel(growthRate, newLvl+1) {
+		newLvl++
+	}
+	if newLvl == level {
+		_, err = s.db.Exec(`UPDATE pokemon SET experience = $1 WHERE id = $2`, newExperience, pokemonID)
+		return false, level, nil, err
+	}
+
+	base, ok := SpeciesBaseStats(species)
+	if !ok {
+		_, err = s.db.Exec(`UPDATE pokemon SET experience = $1 WHERE id = $2`, newExperience, pokemonID)
+		return false, level, nil, err
+	}
+	// IVs reales no se leen acá (ver AddCaught) para simplificar el recalculo — usar IV=0 al
+	// subir de nivel subestima levemente el stat real de un Pokémon atrapado con IVs altos;
+	// aceptable por ahora (mismo tipo de simplificación que el resto de esta sesión).
+	newHP, attack, defense, speed, spAttack, spDefense := ComputeStatsAtLevel(base, newLvl)
+	hpDelta := newHP - hpMax // el HP sube el mismo delta que el máximo, no se resetea a full (regla real de Gen3)
+
+	_, err = s.db.Exec(
+		`UPDATE pokemon SET experience = $1, level = $2, hp_max = $3, hp_current = $4,
+		                     stat_attack = $5, stat_defense = $6, stat_speed = $7, stat_sp_attack = $8, stat_sp_defense = $9
+		 WHERE id = $10`,
+		newExperience, newLvl, newHP, hpCurrent+hpDelta, attack, defense, speed, spAttack, spDefense, pokemonID,
+	)
+	if err != nil {
+		return true, newLvl, nil, err
+	}
+	return true, newLvl, NewMovesLearnedBetween(species, level, newLvl), nil
+}
+
+// LearnMove agrega un movimiento nuevo al Pokémon SOLO si todavía tiene lugar (menos de 4
+// movimientos) — si ya tiene 4, no hace nada y el llamador debe ofrecer reemplazar uno (ver
+// ReplaceMove y wildencounter.translateAndPersist, que arma el prompt correspondiente).
+// ok=true si realmente se aprendió acá mismo.
+func (s *Service) LearnMove(pokemonID string, moveID, ppMax int) (ok bool, err error) {
+	var movesRaw []byte
+	if err := s.db.QueryRow(`SELECT moves FROM pokemon WHERE id = $1`, pokemonID).Scan(&movesRaw); err != nil {
+		return false, fmt.Errorf("consultando movimientos de %s: %w", pokemonID, err)
+	}
+	var moves []MoveSlot
+	if len(movesRaw) > 0 {
+		if err := json.Unmarshal(movesRaw, &moves); err != nil {
+			return false, fmt.Errorf("parseando movimientos de %s: %w", pokemonID, err)
+		}
+	}
+	if len(moves) >= 4 {
+		return false, nil
+	}
+	moves = append(moves, MoveSlot{MoveID: moveID, PPCurrent: ppMax, PPMax: ppMax})
+	movesJSON, err := json.Marshal(moves)
+	if err != nil {
+		return false, err
+	}
+	if _, err := s.db.Exec(`UPDATE pokemon SET moves = $1 WHERE id = $2`, movesJSON, pokemonID); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// MovesOf devuelve los movimientos actuales de un Pokémon — usado por
+// wildencounter.translateAndPersist para armar el prompt de "reemplazar movimiento" cuando
+// LearnMove no pudo agregar uno nuevo por falta de lugar (el cliente necesita saber CUÁLES 4
+// movimientos tiene para poder ofrecerlos como opciones a reemplazar).
+func (s *Service) MovesOf(pokemonID string) ([]MoveSlot, error) {
+	var movesRaw []byte
+	if err := s.db.QueryRow(`SELECT moves FROM pokemon WHERE id = $1`, pokemonID).Scan(&movesRaw); err != nil {
+		return nil, fmt.Errorf("consultando movimientos de %s: %w", pokemonID, err)
+	}
+	var moves []MoveSlot
+	if len(movesRaw) > 0 {
+		if err := json.Unmarshal(movesRaw, &moves); err != nil {
+			return nil, fmt.Errorf("parseando movimientos de %s: %w", pokemonID, err)
+		}
+	}
+	return moves, nil
+}
+
+// ReplaceMove sobreescribe el movimiento en `slot` (0-3) con uno nuevo — usado cuando el
+// jugador elige reemplazar un movimiento existente tras el prompt de LearnMove sin lugar.
+// characterID tiene que ser el dueño real de pokemonID (chequeo de ownership explícito acá,
+// no en el router — este mensaje llega con un pokemon_id elegido por el cliente, sin eso
+// cualquier jugador podría reescribir el moveset de un Pokémon ajeno adivinando su ID).
+// ErrInvalidMoveSlot si el Pokémon no tiene ese slot (ej. tiene menos de 4 movimientos, lo cual
+// no debería pasar en este flujo: si tenía lugar, LearnMove ya lo habría usado directamente).
+func (s *Service) ReplaceMove(characterID, pokemonID string, slot, moveID, ppMax int) error {
+	var ownerID string
+	var movesRaw []byte
+	if err := s.db.QueryRow(`SELECT owner_char_id, moves FROM pokemon WHERE id = $1`, pokemonID).Scan(&ownerID, &movesRaw); err != nil {
+		return fmt.Errorf("consultando pokémon %s: %w", pokemonID, err)
+	}
+	if ownerID != characterID {
+		return ErrNotOwner
+	}
+	var moves []MoveSlot
+	if len(movesRaw) > 0 {
+		if err := json.Unmarshal(movesRaw, &moves); err != nil {
+			return fmt.Errorf("parseando movimientos de %s: %w", pokemonID, err)
+		}
+	}
+	if slot < 0 || slot >= len(moves) {
+		return ErrInvalidMoveSlot
+	}
+	moves[slot] = MoveSlot{MoveID: moveID, PPCurrent: ppMax, PPMax: ppMax}
+	movesJSON, err := json.Marshal(moves)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`UPDATE pokemon SET moves = $1 WHERE id = $2`, movesJSON, pokemonID)
+	return err
+}
+
+// expForLevel: fórmulas reales de las 6 curvas de experiencia de Gen3 (ver
+// src/data/pokemon/experience_tables.h en el checkout de pokeemerald — EXP_SLOW/EXP_FAST/
+// EXP_MEDIUM_FAST/EXP_MEDIUM_SLOW/EXP_ERRATIC/EXP_FLUCTUATING), una por growthRate real de la
+// especie (ver SpeciesGrowthRate) en vez de una única curva universal. growthRate desconocido
+// (fuera de 0-5) cae a Medium Fast. División entera igual que el C original (trunca, no
+// redondea) — Go trunca `/` sobre enteros exactamente igual que C, traducción directa segura.
+func expForLevel(growthRate, level int) int {
+	// Niveles 0 y 1 son un caso especial hardcodeado en las 6 tablas reales de pokeemerald
+	// (0 y 1 exp respectivamente, ANTES de que empiecen a aplicar las fórmulas de cada curva
+	// desde nivel 2) — ver src/data/pokemon/experience_tables.h. Sin este corte, la fórmula de
+	// Medium Slow da un valor negativo para n=1 (6/5 - 15 + 100 - 140 < 0).
+	if level <= 1 {
+		return level
+	}
+	n := level
+	cube := n * n * n
+	switch growthRate {
+	case 1: // GROWTH_ERRATIC
+		switch {
+		case n <= 50:
+			return (100 - n) * cube / 50
+		case n <= 68:
+			return (150 - n) * cube / 100
+		case n <= 98:
+			return ((1911 - 10*n) / 3) * cube / 500
+		default:
+			return (160 - n) * cube / 100
+		}
+	case 2: // GROWTH_FLUCTUATING
+		switch {
+		case n <= 15:
+			return ((n+1)/3 + 24) * cube / 50
+		case n <= 36:
+			return (n + 14) * cube / 50
+		default:
+			return (n/2 + 32) * cube / 50
+		}
+	case 3: // GROWTH_MEDIUM_SLOW
+		return 6*cube/5 - 15*n*n + 100*n - 140
+	case 4: // GROWTH_FAST
+		return 4 * cube / 5
+	case 5: // GROWTH_SLOW
+		return 5 * cube / 4
+	default: // GROWTH_MEDIUM_FAST (0, y cualquier valor no reconocido)
+		return cube
+	}
 }
 
 func randomUint32() uint32 {

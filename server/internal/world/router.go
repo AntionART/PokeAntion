@@ -2,16 +2,22 @@ package world
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"math/rand"
 	"time"
 
+	"pokemon-online/server/internal/battle"
 	"pokemon-online/server/internal/battlesession"
 	"pokemon-online/server/internal/character"
 	"pokemon-online/server/internal/chat"
+	"pokemon-online/server/internal/inventory"
 	"pokemon-online/server/internal/market"
+	"pokemon-online/server/internal/pokemon"
 	"pokemon-online/server/internal/protocol"
 	"pokemon-online/server/internal/social"
 	"pokemon-online/server/internal/trade"
+	"pokemon-online/server/internal/wildencounter"
 	"pokemon-online/server/internal/ws"
 )
 
@@ -28,10 +34,13 @@ type Router struct {
 	guild     *social.GuildService
 	character *character.Service
 	battle    *battlesession.Service
+	inventory *inventory.Service
+	wild      *wildencounter.Service
+	pokemon   *pokemon.Service
 }
 
-func NewRouter(hub *ws.Hub, chatSvc *chat.Service, tradeSvc *trade.Service, friendsSvc *social.Service, partySvc *social.PartyService, marketSvc *market.Service, guildSvc *social.GuildService, characterSvc *character.Service, battleSvc *battlesession.Service) *Router {
-	return &Router{hub: hub, chat: chatSvc, trade: tradeSvc, friends: friendsSvc, party: partySvc, market: marketSvc, guild: guildSvc, character: characterSvc, battle: battleSvc}
+func NewRouter(hub *ws.Hub, chatSvc *chat.Service, tradeSvc *trade.Service, friendsSvc *social.Service, partySvc *social.PartyService, marketSvc *market.Service, guildSvc *social.GuildService, characterSvc *character.Service, battleSvc *battlesession.Service, inventorySvc *inventory.Service, wildSvc *wildencounter.Service, pokemonSvc *pokemon.Service) *Router {
+	return &Router{hub: hub, chat: chatSvc, trade: tradeSvc, friends: friendsSvc, party: partySvc, market: marketSvc, guild: guildSvc, character: characterSvc, battle: battleSvc, inventory: inventorySvc, wild: wildSvc, pokemon: pokemonSvc}
 }
 
 // characterIDLen es el largo fijo de un UUID en su forma con guiones ("xxxxxxxx-xxxx-...").
@@ -76,6 +85,12 @@ func (r *Router) HandleMessage(characterID string, env protocol.Envelope) {
 		r.handleTradeConfirm(characterID, env)
 	case "list_my_pokemon":
 		r.handleListMyPokemon(characterID)
+	case "list_my_items":
+		r.handleListMyItems(characterID)
+	case "shop_catalog_request":
+		r.handleShopCatalogRequest(characterID)
+	case "buy_item":
+		r.handleBuyItem(characterID, env)
 	case "friend_request":
 		r.handleFriendRequest(characterID, env)
 	case "friend_accept":
@@ -128,6 +143,24 @@ func (r *Router) HandleMessage(characterID string, env protocol.Envelope) {
 		r.handleBattleDecline(characterID, env)
 	case "battle_action":
 		r.handleBattleAction(characterID, env)
+	case "battle_switch":
+		r.handleBattleSwitch(characterID, env)
+	case "battle_item":
+		r.handleBattleItem(characterID, env)
+	case "battle_flee":
+		r.handleBattleFlee(characterID, env)
+	case "battle_team_request":
+		r.handleBattleTeamRequest(characterID, env)
+	case "wild_encounter_triggered":
+		r.handleWildEncounterTriggered(characterID, env)
+	case "wild_action":
+		r.handleWildAction(characterID, env)
+	case "wild_throw_ball":
+		r.handleWildThrowBall(characterID, env)
+	case "wild_flee":
+		r.handleWildFlee(characterID, env)
+	case "learn_move_decision":
+		r.handleLearnMoveDecision(characterID, env)
 	default:
 		slog.Warn("tipo de mensaje desconocido", "component", "router", "type", env.Type)
 	}
@@ -268,6 +301,8 @@ func (r *Router) HandleDisconnect(characterID string) {
 		env, _ := protocol.NewEnvelope("battle_cancelled", protocol.BattleCancelledPayload{Reason: "disconnected"})
 		r.hub.SendTo(otherCharID, env)
 	}
+
+	r.wild.CancelActiveForCharacter(characterID) // nadie más a quien avisar, ver comentario del método
 
 	if mapID := r.hub.MapOfCharacter(characterID); mapID != "" {
 		leftEnv, _ := protocol.NewEnvelope("player_left_map", protocol.PlayerUpdatePayload{
@@ -545,6 +580,107 @@ func (r *Router) handleTradeOfferSet(characterID string, env protocol.Envelope) 
 	r.hub.SendTo(charB, updateEnv)
 }
 
+// handleListMyItems responde con los objetos de curación reales que tiene characterID (ver
+// server/internal/inventory) — usado para poblar el menú Bag de una batalla, no una lista fija.
+func (r *Router) handleListMyItems(characterID string) {
+	stacks, err := r.inventory.List(characterID)
+	if err != nil {
+		slog.Error("error listando objetos propios", "component", "inventory", "character_id", characterID, "error", err)
+		return
+	}
+	out := protocol.MyItemListPayload{Items: make([]protocol.ItemStackPayload, 0, len(stacks))}
+	for _, st := range stacks {
+		info, ok := inventory.Catalog[st.ItemID]
+		if ok && info.Pocket == "key_items" {
+			continue // llaves (cañas de pescar, etc.) no son un objeto de Bag usable en batalla
+		}
+		name := info.Name
+		if !ok {
+			name = fmt.Sprintf("#%d", st.ItemID)
+		}
+		out.Items = append(out.Items, protocol.ItemStackPayload{ItemID: st.ItemID, Name: name, Quantity: st.Quantity})
+	}
+	env, _ := protocol.NewEnvelope("my_item_list", out)
+	r.hub.SendTo(characterID, env)
+}
+
+// ---- Tienda (panel simple siempre accesible — ver protocol.ShopCatalogPayload/BuyItemPayload)
+// No hay NPC/edificio de Pokemart todavía: es una superficie de UI propia del cliente, como el
+// panel de amigos/grupo (F5), no algo atado a una posición del mapa.
+
+// handleShopCatalogRequest responde con el catálogo comprable real (nombre + precio de
+// inventory.Catalog) — nunca hardcodeado en el cliente, para que un precio nunca pueda
+// desincronizarse entre los dos lados.
+func (r *Router) handleShopCatalogRequest(characterID string) {
+	items := inventory.PurchasableItems()
+	out := protocol.ShopCatalogPayload{Items: make([]protocol.ShopItemPayload, 0, len(items))}
+	for _, info := range items {
+		out.Items = append(out.Items, protocol.ShopItemPayload{ItemID: info.ID, Name: info.Name, Price: info.Price})
+	}
+	env, _ := protocol.NewEnvelope("shop_catalog", out)
+	r.hub.SendTo(characterID, env)
+}
+
+// handleBuyItem cobra Quantity*precio (precio SIEMPRE resuelto server-side, nunca confiado del
+// cliente) y acredita el inventario si el débito de dinero funcionó. El débito es atómico
+// (character.TryDebitMoney, un solo UPDATE...WHERE) así que no hay ventana para que dos compras
+// concurrentes del mismo personaje dejen dinero negativo.
+func (r *Router) handleBuyItem(characterID string, env protocol.Envelope) {
+	var p protocol.BuyItemPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	if p.Quantity <= 0 || p.Quantity > 99 {
+		errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: "cantidad inválida (1-99)"})
+		r.hub.SendTo(characterID, errEnv)
+		return
+	}
+
+	info, ok := inventory.Catalog[p.ItemID]
+	if !ok || info.Price <= 0 {
+		errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: "ese objeto no está en venta"})
+		r.hub.SendTo(characterID, errEnv)
+		return
+	}
+
+	totalCost := info.Price * p.Quantity
+	newMoney, err := r.character.TryDebitMoney(characterID, totalCost)
+	if err != nil {
+		if err == character.ErrInsufficientFunds {
+			errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: "no te alcanza el dinero"})
+			r.hub.SendTo(characterID, errEnv)
+			return
+		}
+		slog.Error("error cobrando compra", "component", "inventory", "character_id", characterID, "error", err)
+		return
+	}
+
+	if err := r.inventory.Grant(characterID, p.ItemID, p.Quantity); err != nil {
+		// El dinero ya se descontó — esto es un fallo real de infraestructura (Postgres caído a
+		// mitad de la operación), no algo que se pueda revertir limpio sin una transacción
+		// explícita (que este proyecto no usa en ningún otro lado, ver market/trade). Se loguea
+		// fuerte para que quien hostee el server lo note y pueda compensar a mano si hace falta.
+		slog.Error("compra cobrada pero no se pudo acreditar el objeto", "component", "inventory",
+			"character_id", characterID, "item_id", p.ItemID, "quantity", p.Quantity, "error", err)
+		return
+	}
+
+	newQuantity := 0
+	if stacks, err := r.inventory.List(characterID); err == nil {
+		for _, st := range stacks {
+			if st.ItemID == p.ItemID {
+				newQuantity = st.Quantity
+				break
+			}
+		}
+	}
+
+	resultEnv, _ := protocol.NewEnvelope("buy_result", protocol.BuyResultPayload{
+		ItemID: p.ItemID, Quantity: p.Quantity, TotalCost: totalCost, NewMoney: newMoney, NewQuantity: newQuantity,
+	})
+	r.hub.SendTo(characterID, resultEnv)
+}
+
 // handleListMyPokemon responde con el resumen de los Pokémon disponibles de characterID
 // (usado por el cliente para poblar el selector de "qué ofrecer" en un trade).
 func (r *Router) handleListMyPokemon(characterID string) {
@@ -659,15 +795,39 @@ func (r *Router) handleBattleAction(characterID string, env protocol.Envelope) {
 	if err := json.Unmarshal(env.Payload, &p); err != nil {
 		return
 	}
-	result, err := r.battle.SubmitAction(p.BattleSessionID, characterID, p.MoveSlot)
+	r.submitBattleAction(characterID, p.BattleSessionID, battlesession.ActionRequest{MoveSlot: p.MoveSlot})
+}
+
+func (r *Router) handleBattleSwitch(characterID string, env protocol.Envelope) {
+	var p protocol.BattleSwitchPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	r.submitBattleAction(characterID, p.BattleSessionID, battlesession.ActionRequest{IsSwitch: true, TeamSlot: p.TeamSlot})
+}
+
+func (r *Router) handleBattleItem(characterID string, env protocol.Envelope) {
+	var p protocol.BattleItemPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	r.submitBattleAction(characterID, p.BattleSessionID, battlesession.ActionRequest{IsItem: true, ItemID: p.ItemID, TeamSlot: p.TeamSlot})
+}
+
+// submitBattleAction es el camino compartido por battle_action/battle_switch: ambos mandan una
+// ActionRequest a battlesession y, si el intercambio quedó resuelto (el rival ya había mandado
+// la suya), reportan el mismo battle_turn_result/battle_end — la única diferencia entre
+// atacar y cambiar de Pokémon es CÓMO se arma la ActionRequest, no qué se hace con el resultado.
+func (r *Router) submitBattleAction(characterID, sessionID string, req battlesession.ActionRequest) {
+	result, err := r.battle.SubmitAction(sessionID, characterID, req)
 	if err != nil {
-		slog.Error("error procesando acción de batalla", "component", "battle", "character_id", characterID, "battle_session_id", p.BattleSessionID, "error", err)
+		slog.Error("error procesando acción de batalla", "component", "battle", "character_id", characterID, "battle_session_id", sessionID, "error", err)
 		errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: err.Error()})
 		r.hub.SendTo(characterID, errEnv)
 		return
 	}
 	if result == nil {
-		return // falta la acción del rival, todavía no hay turno que reportar
+		return // falta la acción del rival, todavía no hay intercambio que reportar
 	}
 
 	events := make([]protocol.BattleEventPayload, 0, len(result.Events))
@@ -675,6 +835,7 @@ func (r *Router) handleBattleAction(characterID string, env protocol.Envelope) {
 		events = append(events, protocol.BattleEventPayload{
 			Type: e.Type.String(), ActorCharacterID: e.ActorCharID,
 			MoveID: e.MoveID, Damage: e.Damage, Effectiveness: e.Effectiveness, Fainted: e.Fainted,
+			Amount: e.Amount, TargetSpecies: e.TargetSpecies, TargetNickname: e.TargetNickname, ItemID: e.ItemID,
 		})
 	}
 
@@ -686,20 +847,223 @@ func (r *Router) handleBattleAction(characterID string, env protocol.Envelope) {
 			}
 		}
 		turnEnv, _ := protocol.NewEnvelope("battle_turn_result", protocol.BattleTurnResultPayload{
-			BattleSessionID: p.BattleSessionID, Events: events, YourHP: hp, OpponentHP: opponentHP,
+			BattleSessionID: sessionID, Events: events, YourHP: hp, OpponentHP: opponentHP,
+			YouMustSwitch: result.NeedsSwitch == charID,
 		})
 		r.hub.SendTo(charID, turnEnv)
 	}
 
 	if result.Finished {
 		winnerEnv, _ := protocol.NewEnvelope("battle_end", protocol.BattleEndPayload{
-			BattleSessionID: p.BattleSessionID, WinnerCharacterID: result.WinnerCharID, YouWon: true,
+			BattleSessionID: sessionID, WinnerCharacterID: result.WinnerCharID, YouWon: true, Reason: result.Reason,
 		})
 		loserEnv, _ := protocol.NewEnvelope("battle_end", protocol.BattleEndPayload{
-			BattleSessionID: p.BattleSessionID, WinnerCharacterID: result.WinnerCharID, YouWon: false,
+			BattleSessionID: sessionID, WinnerCharacterID: result.WinnerCharID, YouWon: false, Reason: result.Reason,
 		})
 		r.hub.SendTo(result.WinnerCharID, winnerEnv)
 		r.hub.SendTo(result.LoserCharID, loserEnv)
+	}
+}
+
+// handleBattleFlee termina la batalla de inmediato a favor del rival — ver
+// battlesession.Service.Flee: a diferencia de atacar/cambiar, huir no espera a que el rival
+// también mande su jugada.
+func (r *Router) handleBattleFlee(characterID string, env protocol.Envelope) {
+	var p protocol.BattleSessionRefPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	winner, loser, err := r.battle.Flee(p.BattleSessionID, characterID)
+	if err != nil {
+		slog.Error("error huyendo de la batalla", "component", "battle", "character_id", characterID, "battle_session_id", p.BattleSessionID, "error", err)
+		errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: err.Error()})
+		r.hub.SendTo(characterID, errEnv)
+		return
+	}
+	winnerEnv, _ := protocol.NewEnvelope("battle_end", protocol.BattleEndPayload{
+		BattleSessionID: p.BattleSessionID, WinnerCharacterID: winner, YouWon: true, Reason: "fled",
+	})
+	loserEnv, _ := protocol.NewEnvelope("battle_end", protocol.BattleEndPayload{
+		BattleSessionID: p.BattleSessionID, WinnerCharacterID: winner, YouWon: false, Reason: "fled",
+	})
+	r.hub.SendTo(winner, winnerEnv)
+	r.hub.SendTo(loser, loserEnv)
+}
+
+// handleBattleTeamRequest responde con el equipo completo del emisor dentro de una batalla
+// (para el menú "Pokémon" del cliente) — battle_start solo manda el activo, no todo el equipo.
+func (r *Router) handleBattleTeamRequest(characterID string, env protocol.Envelope) {
+	var p protocol.BattleTeamRequestPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	team, activeIdx, err := r.battle.Team(p.BattleSessionID, characterID)
+	if err != nil {
+		slog.Error("error obteniendo equipo de batalla", "component", "battle", "character_id", characterID, "battle_session_id", p.BattleSessionID, "error", err)
+		return
+	}
+	wireTeam := make([]protocol.BattlePokemonPayload, 0, len(team))
+	for _, v := range team {
+		wireTeam = append(wireTeam, battlePokemonToWireCharacter(v))
+	}
+	env2, _ := protocol.NewEnvelope("battle_team", protocol.BattleTeamPayload{
+		BattleSessionID: p.BattleSessionID, Team: wireTeam, ActiveIndex: activeIdx,
+	})
+	r.hub.SendTo(characterID, env2)
+}
+
+// ---- Encuentros salvajes (ver server/internal/wildencounter) ----
+
+// handleWildEncounterTriggered arranca un encuentro cuando el cliente detecta (por RAM) que la
+// ROM disparó uno nativo — el mapa NO se toma del payload del cliente, se usa
+// hub.MapOfCharacter (lo que el propio Hub ya sabe por los "move" de este personaje): un solo
+// canal de verdad para "en qué mapa estás", no dos que podrían desincronizarse.
+func (r *Router) handleWildEncounterTriggered(characterID string, env protocol.Envelope) {
+	var p protocol.WildEncounterTriggeredPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	mapID := r.hub.MapOfCharacter(characterID)
+	if mapID == "" {
+		return
+	}
+	kind := wildencounter.EncounterKind(p.EncounterType)
+	if kind == "" {
+		kind = wildencounter.EncounterLand // default: mismo comportamiento que antes de que existiera este campo
+	}
+	sessionID, playerView, wildView, err := r.wild.StartEncounter(characterID, mapID, kind, p.RodTier, rand.New(rand.NewSource(time.Now().UnixNano())))
+	if err != nil {
+		if err != wildencounter.ErrNoEncounterHere {
+			// ErrInvalidRodTier/ErrMissingRod SÍ son errores que el cliente necesita ver (le
+			// falta un objeto real o mandó un valor inválido) — a diferencia de "no tocó
+			// encuentro esta vez", que es silencioso.
+			if err == wildencounter.ErrInvalidRodTier || err == wildencounter.ErrMissingRod {
+				errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: err.Error()})
+				r.hub.SendTo(characterID, errEnv)
+				return
+			}
+			slog.Error("error iniciando encuentro salvaje", "component", "wildencounter", "character_id", characterID, "map_id", mapID, "error", err)
+		}
+		return // sin encuentro esta vez (o sin tabla para este mapa) — no es un error que el cliente necesite ver
+	}
+
+	startEnv, _ := protocol.NewEnvelope("wild_battle_start", protocol.WildBattleStartPayload{
+		SessionID: sessionID,
+		Yours: protocol.BattlePokemonPayload{
+			PokemonID: playerView.PokemonID, SpeciesID: playerView.Species, Nickname: playerView.Nickname,
+			Level: playerView.Level, CurrentHP: playerView.CurrentHP, MaxHP: playerView.MaxHP,
+		},
+		Wild: protocol.WildPokemonPayload{SpeciesID: wildView.Species, Level: wildView.Level, CurrentHP: wildView.CurrentHP, MaxHP: wildView.MaxHP},
+	})
+	r.hub.SendTo(characterID, startEnv)
+}
+
+func (r *Router) handleWildAction(characterID string, env protocol.Envelope) {
+	var p protocol.WildActionPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	result, err := r.wild.SubmitMove(p.SessionID, characterID, p.MoveSlot)
+	if err != nil {
+		slog.Error("error procesando acción de encuentro salvaje", "component", "wildencounter", "character_id", characterID, "session_id", p.SessionID, "error", err)
+		errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: err.Error()})
+		r.hub.SendTo(characterID, errEnv)
+		return
+	}
+	r.sendWildTurnResult(characterID, p.SessionID, result)
+}
+
+func (r *Router) handleWildThrowBall(characterID string, env protocol.Envelope) {
+	var p protocol.WildThrowBallPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	result, err := r.wild.ThrowBall(p.SessionID, characterID, p.ItemID)
+	if err != nil {
+		slog.Error("error tirando Poké Ball", "component", "wildencounter", "character_id", characterID, "session_id", p.SessionID, "error", err)
+		errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: err.Error()})
+		r.hub.SendTo(characterID, errEnv)
+		return
+	}
+	r.sendWildTurnResult(characterID, p.SessionID, result)
+}
+
+func (r *Router) handleWildFlee(characterID string, env protocol.Envelope) {
+	var p protocol.WildSessionRefPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	if err := r.wild.Flee(p.SessionID, characterID); err != nil {
+		slog.Error("error huyendo de encuentro salvaje", "component", "wildencounter", "character_id", characterID, "session_id", p.SessionID, "error", err)
+		return
+	}
+	endEnv, _ := protocol.NewEnvelope("wild_battle_end", protocol.WildBattleEndPayload{SessionID: p.SessionID, Reason: "fled"})
+	r.hub.SendTo(characterID, endEnv)
+}
+
+// sendWildTurnResult reporta el resultado de un intercambio (SubmitMove/ThrowBall comparten
+// forma) — si terminó, manda wild_battle_end con el detalle correspondiente (experiencia
+// ganada, o el Pokémon recién atrapado).
+func (r *Router) sendWildTurnResult(characterID, sessionID string, result *wildencounter.TurnResult) {
+	events := make([]protocol.WildEventPayload, 0, len(result.Events))
+	for _, e := range result.Events {
+		events = append(events, protocol.WildEventPayload{
+			Type: e.Type.String(), IsPlayer: e.IsPlayer,
+			MoveID: e.MoveID, Damage: e.Damage, Effectiveness: e.Effectiveness, Fainted: e.Fainted, Amount: e.Amount,
+		})
+	}
+	turnEnv, _ := protocol.NewEnvelope("wild_turn_result", protocol.WildTurnResultPayload{
+		SessionID: sessionID, Events: events, YourHP: result.PlayerHP, WildHP: result.WildHP,
+	})
+	r.hub.SendTo(characterID, turnEnv)
+
+	if !result.Finished {
+		return
+	}
+	endPayload := protocol.WildBattleEndPayload{
+		SessionID: sessionID, Reason: result.Reason,
+		ExpGained: result.ExpGained, LeveledUp: result.LeveledUp, NewLevel: result.NewLevel,
+		LearnedMoveIds: result.LearnedMoves,
+	}
+	if result.CaughtPokemon != nil {
+		endPayload.CaughtPokemon = &protocol.PokemonSummaryPayload{
+			ID: result.CaughtPokemon.ID, SpeciesID: result.CaughtPokemon.Species,
+			Nickname: result.CaughtPokemon.Nickname, Level: result.CaughtPokemon.Level, Location: "team",
+		}
+	}
+	endEnv, _ := protocol.NewEnvelope("wild_battle_end", endPayload)
+	r.hub.SendTo(characterID, endEnv)
+
+	// Prompts de "reemplazar movimiento" van APARTE de wild_battle_end (no bloquean el fin de
+	// la pelea) — uno por movimiento que no tuvo lugar, el cliente los procesa en orden.
+	for _, pending := range result.PendingMoveLearns {
+		promptEnv, _ := protocol.NewEnvelope("wild_move_replace_prompt", protocol.WildMoveReplacePromptPayload{
+			PokemonID: pending.PokemonID, NewMoveID: pending.NewMoveID, CurrentMoveIds: pending.CurrentMoveIDs,
+		})
+		r.hub.SendTo(characterID, promptEnv)
+	}
+}
+
+// handleLearnMoveDecision procesa la respuesta del jugador a wild_move_replace_prompt.
+// ReplaceSlot -1 = declinar (no se toca nada, el movimiento nuevo se pierde, igual que el
+// juego real si el jugador dice que no). El ownership de PokemonID se valida DENTRO de
+// pokemon.ReplaceMove, no acá — ver el comentario en esa función.
+func (r *Router) handleLearnMoveDecision(characterID string, env protocol.Envelope) {
+	var p protocol.LearnMoveDecisionPayload
+	if err := json.Unmarshal(env.Payload, &p); err != nil {
+		return
+	}
+	if p.ReplaceSlot < 0 {
+		return // el jugador declinó aprender el movimiento nuevo
+	}
+	pp := 0
+	if m, ok := battle.MoveByID(p.NewMoveID); ok {
+		pp = m.PP
+	}
+	if err := r.pokemon.ReplaceMove(characterID, p.PokemonID, p.ReplaceSlot, p.NewMoveID, pp); err != nil {
+		slog.Error("error reemplazando movimiento", "component", "pokemon", "character_id", characterID, "pokemon_id", p.PokemonID, "error", err)
+		errEnv, _ := protocol.NewEnvelope("error", protocol.ErrorPayload{Code: "invalid_state", Message: err.Error()})
+		r.hub.SendTo(characterID, errEnv)
 	}
 }
 

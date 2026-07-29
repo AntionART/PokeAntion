@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Plantilla editable: quien hostee el server para sus amigos edita server_http/server_ws
+         acá con la IP/dominio real ANTES de repartir la carpeta publicada — ver
+         scripts/build-client-bundle.ps1. Copy (no CopyIfNewer): si ya existe uno editado en el
+         output, un rebuild no debería pisarlo con la plantilla default. -->
+    <None Include="launcher-config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -50,6 +50,7 @@ internal sealed class LoginFlow
 
     private readonly Win32Window _window;
     private readonly Renderer _renderer;
+    private readonly float _windowWidth, _windowHeight;
     private readonly string _serverHttp;
     private readonly string _serverWs;
     private readonly List<RomCatalogEntry> _catalog;
@@ -74,16 +75,22 @@ internal sealed class LoginFlow
     public string? DumpPath { get; set; }
     public int DumpAfterFrames { get; set; } = 60;
 
-    public LoginFlow(Win32Window window, Renderer renderer, string serverHttp, string serverWs, List<RomCatalogEntry> catalog)
+    public LoginFlow(Win32Window window, Renderer renderer, float windowWidth, float windowHeight, string serverHttp, string serverWs, List<RomCatalogEntry> catalog, string? prefillUsername = null)
     {
         _window = window;
         _renderer = renderer;
+        _windowWidth = windowWidth;
+        _windowHeight = windowHeight;
         _serverHttp = serverHttp;
         _serverWs = serverWs;
         _catalog = catalog;
         _screen = catalog.Count == 0 ? Screen.Error : Screen.Login;
         if (catalog.Count == 0)
             _status = "No se encontró ninguna ROM válida en este equipo (ver memory-maps/*.json -> rom_path).";
+        // "Recordar usuario" (Launcher): solo precarga el campo, la contraseña siempre se sigue
+        // pidiendo acá — el Launcher nunca la ve ni la guarda.
+        if (!string.IsNullOrEmpty(prefillUsername))
+            _loginUser.SetValue(prefillUsername);
     }
 
     /// <summary>Corre el sub-loop de estas pantallas hasta completar login + selección de ROM,
@@ -179,6 +186,7 @@ internal sealed class LoginFlow
                     case Screen.Login:
                         ws ??= TryConnect();
                         if (ws != null) TrySubmitLogin(ws);
+                        if (_pendingResult != null) return _pendingResult;
                         break;
                     case Screen.Register:
                         if (_regUser.Value.Length == 0 || _regPass.Value.Length == 0)
@@ -297,10 +305,24 @@ internal sealed class LoginFlow
         }
 
         _pendingLogin = (result.CharacterId!, result.MapId!, result.X, result.Y, result.SessionToken!, result.Color ?? "default");
+
+        // Catálogo de una sola entrada = el Launcher ya resolvió/validó la ROM antes de arrancar
+        // este .exe (ver Program.cs --rom/--memory-map/--rom-id) — no hace falta preguntarle al
+        // jugador algo que ya se decidió, el motor solo ejecuta el juego.
+        if (_catalog.Count == 1)
+        {
+            var login = _pendingLogin.Value;
+            ws.OnMessage -= BufferMessage;
+            _pendingResult = new GameSession(ws, login.CharacterId, login.MapId, login.X, login.Y, login.SessionToken, _catalog[0], _bufferedMessages, login.Color);
+            return;
+        }
+
         _status = "";
         _screen = Screen.RomSelect;
         _romIndex = 0;
     }
+
+    private GameSession? _pendingResult;
 
     private void TrySubmitRegister(ushort starterSpecies)
     {
@@ -428,82 +450,124 @@ internal sealed class LoginFlow
         return (characterId, mapId, x, y, sessionToken, color, error);
     }
 
+    // Tamaño fijo de la tarjeta central: ancho suficiente para la fila más larga (los hints de
+    // Register, "Enter: continuar (elegir inicial)..."), sin depender del tamaño real de
+    // ventana salvo para centrarla. Estilo "PokeMMO" pedido por el usuario: un panel enmarcado
+    // sobre fondo oscuro, no texto plano flotando en negro (que era el diseño original de esta
+    // pantalla, funcional pero sin ninguna intención visual).
+    private const float CardWidth = 620f, CardHeight = 420f;
+
     private void Draw()
     {
-        const float X = 40f, TitleY = 40f;
+        float cardX = (_windowWidth - CardWidth) / 2f;
+        float cardY = (_windowHeight - CardHeight) / 2f;
         float lineH = _renderer.TextLineHeight;
-        float y = TitleY;
 
-        _renderer.AddText("POKÉMON ONLINE", X, y, 1f, 0.85f, 0.2f, 1f, 1.6f);
-        y += lineH * 2.2f;
+        // Fondo de toda la ventana + la tarjeta central en sí: mismo lenguaje visual que
+        // BattleScreen (rect oscuro semitransparente + barra de acento arriba), para que las
+        // pantallas de inicio y de juego se sientan parte del mismo producto.
+        _renderer.AddRect(0, 0, _windowWidth, _windowHeight, Theme.Background.R, Theme.Background.G, Theme.Background.B, 1f);
+        _renderer.AddRect(cardX, cardY, CardWidth, CardHeight, Theme.NeutralDark.R, Theme.NeutralDark.G, Theme.NeutralDark.B, 0.96f);
+        _renderer.AddRect(cardX, cardY, CardWidth, 4f, Theme.Secondary.R, Theme.Secondary.G, Theme.Secondary.B, 1f);
+        _renderer.AddRect(cardX, cardY + CardHeight - 4f, CardWidth, 4f, Theme.Secondary.R, Theme.Secondary.G, Theme.Secondary.B, 1f);
+        _renderer.AddRect(cardX, cardY, 4f, CardHeight, Theme.Secondary.R, Theme.Secondary.G, Theme.Secondary.B, 1f);
+        _renderer.AddRect(cardX + CardWidth - 4f, cardY, 4f, CardHeight, Theme.Secondary.R, Theme.Secondary.G, Theme.Secondary.B, 1f);
+
+        const float Pad = 32f;
+        float x = cardX + Pad;
+        float y = cardY + Pad;
+
+        string title = "POKÉMON ONLINE";
+        float titleScale = 1.5f;
+        float titleWidth = _renderer.MeasureTextWidth(title, titleScale);
+        _renderer.AddText(title, cardX + (CardWidth - titleWidth) / 2f, y, Theme.Tertiary.R, Theme.Tertiary.G, Theme.Tertiary.B, 1f, titleScale);
+        y += lineH * 2.0f;
+        // Línea de acento bajo el título, ancho de la tarjeta menos el padding — mismo truco de
+        // "barra de color" que ya separa el header del cuerpo en BattleScreen.
+        _renderer.AddRect(x, y, CardWidth - Pad * 2f, 2f, Theme.Primary.R, Theme.Primary.G, Theme.Primary.B, 0.6f);
+        y += lineH * 1.2f;
 
         switch (_screen)
         {
             case Screen.Login:
-                _renderer.AddText("Iniciar sesión", X, y, 1f, 1f, 1f, 0.9f); y += lineH * 1.5f;
-                DrawField(_loginUser, X, ref y, focusIndex: 0);
-                DrawField(_loginPass, X, ref y, focusIndex: 1);
-                y += lineH * 0.5f;
-                _renderer.AddText("Enter: iniciar sesión   Tab: cambiar de campo   F4: crear cuenta", X, y, 0.7f, 0.7f, 0.7f, 0.8f);
+                _renderer.AddText("Iniciar sesión", x, y, Theme.White.R, Theme.White.G, Theme.White.B, 0.95f); y += lineH * 1.6f;
+                DrawField(_loginUser, x, CardWidth - Pad * 2f, ref y, focusIndex: 0);
+                DrawField(_loginPass, x, CardWidth - Pad * 2f, ref y, focusIndex: 1);
+                y += lineH * 0.6f;
+                DrawHint("Enter: iniciar sesión   Tab: cambiar de campo   F4: crear cuenta", x, y);
                 break;
 
             case Screen.Register:
-                _renderer.AddText("Crear cuenta", X, y, 1f, 1f, 1f, 0.9f); y += lineH * 1.5f;
-                DrawField(_regUser, X, ref y, focusIndex: 0);
-                DrawField(_regEmail, X, ref y, focusIndex: 1);
-                DrawField(_regPass, X, ref y, focusIndex: 2);
-                DrawField(_regNick, X, ref y, focusIndex: 3);
-                y += lineH * 0.5f;
-                _renderer.AddText("Enter: continuar (elegir inicial)   Tab: cambiar de campo   F4/Esc: volver a iniciar sesión", X, y, 0.7f, 0.7f, 0.7f, 0.8f);
+                _renderer.AddText("Crear cuenta", x, y, Theme.White.R, Theme.White.G, Theme.White.B, 0.95f); y += lineH * 1.6f;
+                DrawField(_regUser, x, CardWidth - Pad * 2f, ref y, focusIndex: 0);
+                DrawField(_regEmail, x, CardWidth - Pad * 2f, ref y, focusIndex: 1);
+                DrawField(_regPass, x, CardWidth - Pad * 2f, ref y, focusIndex: 2);
+                DrawField(_regNick, x, CardWidth - Pad * 2f, ref y, focusIndex: 3);
+                y += lineH * 0.4f;
+                DrawHint("Enter: continuar (elegir inicial)   Tab: cambiar de campo   F4/Esc: volver", x, y);
                 break;
 
             case Screen.PickStarter:
-                _renderer.AddText("Elegí tu Pokémon inicial:", X, y, 1f, 1f, 1f, 0.9f); y += lineH * 1.5f;
+                _renderer.AddText("Elegí tu Pokémon inicial:", x, y, Theme.White.R, Theme.White.G, Theme.White.B, 0.95f); y += lineH * 1.6f;
                 for (int i = 0; i < StarterChoices.Length; i++)
-                {
-                    bool sel = i == _starterIndex;
-                    string prefix = sel ? "> " : "  ";
-                    (float r, float g, float b) = sel ? (0.4f, 1f, 0.4f) : (0.8f, 0.8f, 0.8f);
-                    _renderer.AddText(prefix + StarterChoices[i].Name, X, y, r, g, b, 1f);
-                    y += lineH;
-                }
-                y += lineH * 0.5f;
-                _renderer.AddText("Arriba/Abajo: elegir   Enter: confirmar y crear cuenta   Escape: volver", X, y, 0.7f, 0.7f, 0.7f, 0.8f);
+                    DrawListRow(StarterChoices[i].Name, i == _starterIndex, x, CardWidth - Pad * 2f, ref y);
+                y += lineH * 0.6f;
+                DrawHint("Arriba/Abajo: elegir   Enter: confirmar y crear cuenta   Escape: volver", x, y);
                 break;
 
             case Screen.RomSelect:
-                _renderer.AddText("Elegí tu ROM:", X, y, 1f, 1f, 1f, 0.9f); y += lineH * 1.5f;
+                _renderer.AddText("Elegí tu ROM:", x, y, Theme.White.R, Theme.White.G, Theme.White.B, 0.95f); y += lineH * 1.6f;
                 for (int i = 0; i < _catalog.Count; i++)
-                {
-                    bool sel = i == _romIndex;
-                    string prefix = sel ? "> " : "  ";
-                    (float r, float g, float b) = sel ? (0.4f, 1f, 0.4f) : (0.8f, 0.8f, 0.8f);
-                    _renderer.AddText(prefix + _catalog[i].DisplayName, X, y, r, g, b, 1f);
-                    y += lineH;
-                }
-                y += lineH * 0.5f;
-                _renderer.AddText("Arriba/Abajo: elegir   Enter: confirmar", X, y, 0.7f, 0.7f, 0.7f, 0.8f);
+                    DrawListRow(_catalog[i].DisplayName, i == _romIndex, x, CardWidth - Pad * 2f, ref y);
+                y += lineH * 0.6f;
+                DrawHint("Arriba/Abajo: elegir   Enter: confirmar", x, y);
                 break;
 
             case Screen.Error:
-                _renderer.AddText("No se puede continuar:", X, y, 1f, 0.3f, 0.3f, 1f); y += lineH * 1.5f;
+                _renderer.AddText("No se puede continuar:", x, y, Theme.Secondary.R, Theme.Secondary.G, Theme.Secondary.B, 1f); y += lineH * 1.6f;
                 break;
         }
 
-        y += lineH * 1.5f;
+        y = cardY + CardHeight - Pad - lineH;
         if (_status.Length > 0)
         {
-            (float r, float g, float b) = _statusIsError ? (1f, 0.35f, 0.35f) : (0.4f, 1f, 0.4f);
-            _renderer.AddText(_status, X, y, r, g, b, 1f);
+            (float r, float g, float b) = _statusIsError ? Theme.Secondary : Theme.Primary;
+            _renderer.AddText(_status, x, y, r, g, b, 1f);
         }
     }
 
-    private void DrawField(TextField field, float x, ref float y, int focusIndex)
+    private void DrawHint(string text, float x, float y) =>
+        _renderer.AddText(text, x, y, Theme.NeutralLight.R, Theme.NeutralLight.G, Theme.NeutralLight.B, 0.75f);
+
+    private void DrawField(TextField field, float x, float width, ref float y, int focusIndex)
     {
         bool focused = focusIndex == _focus && _screen != Screen.RomSelect;
-        (float r, float g, float b) = focused ? (0.4f, 1f, 0.4f) : (0.85f, 0.85f, 0.85f);
+        float lineH = _renderer.TextLineHeight;
+        float boxHeight = lineH * 1.5f;
+
+        // "Caja" de input: como AddRect no tiene un modo "solo borde", se simula dibujando un
+        // rect de color de borde un poco más grande por detrás y el fondo real encima — mismo
+        // patrón ya usado en el emblema/badge de BattleScreen para las filas de menú resaltadas.
+        (float br, float bg, float bb) = focused ? Theme.Primary : Theme.NeutralLight;
+        float borderAlpha = focused ? 1f : 0.25f;
+        _renderer.AddRect(x - 2f, y - 2f, width + 4f, boxHeight + 4f, br, bg, bb, borderAlpha);
+        _renderer.AddRect(x, y, width, boxHeight, Theme.Background.R, Theme.Background.G, Theme.Background.B, 0.9f);
+
         string cursor = focused ? "_" : "";
-        _renderer.AddText($"{field.Label}: {field.Display}{cursor}", x, y, r, g, b, 1f);
-        y += _renderer.TextLineHeight * 1.2f;
+        (float tr, float tg, float tb) = focused ? Theme.Primary : Theme.NeutralLight;
+        _renderer.AddText($"{field.Label}: {field.Display}{cursor}", x + 10f, y + boxHeight * 0.22f, tr, tg, tb, 1f);
+        y += boxHeight + lineH * 0.5f;
+    }
+
+    private void DrawListRow(string label, bool selected, float x, float width, ref float y)
+    {
+        float lineH = _renderer.TextLineHeight;
+        float rowHeight = lineH * 1.3f;
+        if (selected)
+            _renderer.AddRect(x - 6f, y - 2f, width + 12f, rowHeight, Theme.Secondary.R, Theme.Secondary.G, Theme.Secondary.B, 0.3f);
+
+        (float r, float g, float b) = selected ? Theme.Primary : Theme.NeutralLight;
+        _renderer.AddText((selected ? "> " : "  ") + label, x, y, r, g, b, 1f);
+        y += rowHeight;
     }
 }

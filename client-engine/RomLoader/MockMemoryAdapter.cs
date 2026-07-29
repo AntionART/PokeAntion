@@ -37,6 +37,10 @@ public sealed class MockMemoryAdapter : IMemoryAdapter
     /// probar el resto del motor (comparación por igualdad de mapa, ver Program.cs).</summary>
     public byte GetMapNumber() => 1;
 
+    /// <summary>Sin ROM real no hay SaveBlock1 que leer — null es una respuesta válida (mismo
+    /// criterio que GetMoney()/GetParty()).</summary>
+    public (byte Group, byte Num)? GetMapGroupAndNum() => null;
+
     /// <summary>Sin ROM real no hay OAM que leer — null es una respuesta válida (ver el
     /// contrato de IMemoryAdapter): el motor simplemente no muestra sprite propio recapturado,
     /// nada se rompe.</summary>
@@ -54,4 +58,7 @@ public sealed class MockMemoryAdapter : IMemoryAdapter
     public bool? GetFlag(int flagId) => null;
     public void SetFlag(int flagId, bool value) { }
     public void SetPartyPokemon(int slot, Gen3Codec.NewPokemonSpec spec) { }
+
+    /// <summary>Sin ROM real no hay gMain que leer — null es una respuesta válida.</summary>
+    public bool? IsCallback2AwayFromOverworld() => null;
 }

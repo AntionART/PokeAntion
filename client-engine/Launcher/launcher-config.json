@@ -1,0 +1,4 @@
+{
+  "server_http": "http://localhost:8080",
+  "server_ws": "ws://localhost:8080/ws"
+}

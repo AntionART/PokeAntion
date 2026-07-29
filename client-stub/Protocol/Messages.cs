@@ -216,6 +216,72 @@ namespace PokemonOnline.Protocol
         [JsonPropertyName("move_slot")] public int MoveSlot { get; set; }
     }
 
+    public class BattleSwitchPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+        [JsonPropertyName("team_slot")] public int TeamSlot { get; set; }
+    }
+
+    public class BattleItemPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+        [JsonPropertyName("item_id")] public int ItemId { get; set; }
+        [JsonPropertyName("team_slot")] public int TeamSlot { get; set; }
+    }
+
+    public class BattleTeamRequestPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+    }
+
+    public class BattleTeamPayload
+    {
+        [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
+        [JsonPropertyName("team")] public BattlePokemonPayload[] Team { get; set; } = Array.Empty<BattlePokemonPayload>();
+        [JsonPropertyName("active_index")] public int ActiveIndex { get; set; }
+    }
+
+    public class ItemStackPayload
+    {
+        [JsonPropertyName("item_id")] public int ItemId { get; set; }
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("quantity")] public int Quantity { get; set; }
+    }
+
+    public class MyItemListPayload
+    {
+        [JsonPropertyName("items")] public ItemStackPayload[] Items { get; set; } = Array.Empty<ItemStackPayload>();
+    }
+
+    // ---- Tienda (panel simple siempre accesible, ver server/internal/world Router.handleBuyItem) ----
+
+    public class ShopItemPayload
+    {
+        [JsonPropertyName("item_id")] public int ItemId { get; set; }
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("price")] public int Price { get; set; }
+    }
+
+    public class ShopCatalogPayload
+    {
+        [JsonPropertyName("items")] public ShopItemPayload[] Items { get; set; } = Array.Empty<ShopItemPayload>();
+    }
+
+    public class BuyItemPayload
+    {
+        [JsonPropertyName("item_id")] public int ItemId { get; set; }
+        [JsonPropertyName("quantity")] public int Quantity { get; set; }
+    }
+
+    public class BuyResultPayload
+    {
+        [JsonPropertyName("item_id")] public int ItemId { get; set; }
+        [JsonPropertyName("quantity")] public int Quantity { get; set; }
+        [JsonPropertyName("total_cost")] public int TotalCost { get; set; }
+        [JsonPropertyName("new_money")] public int NewMoney { get; set; }
+        [JsonPropertyName("new_quantity")] public int NewQuantity { get; set; }
+    }
+
     public class BattleEventPayload
     {
         [JsonPropertyName("type")] public string Type { get; set; } = "";
@@ -224,6 +290,10 @@ namespace PokemonOnline.Protocol
         [JsonPropertyName("damage")] public int Damage { get; set; }
         [JsonPropertyName("effectiveness")] public double Effectiveness { get; set; }
         [JsonPropertyName("fainted")] public bool Fainted { get; set; }
+        [JsonPropertyName("amount")] public int Amount { get; set; }
+        [JsonPropertyName("target_species")] public int TargetSpecies { get; set; }
+        [JsonPropertyName("target_nickname")] public string? TargetNickname { get; set; }
+        [JsonPropertyName("item_id")] public int ItemId { get; set; }
     }
 
     public class BattleTurnResultPayload
@@ -232,13 +302,110 @@ namespace PokemonOnline.Protocol
         [JsonPropertyName("events")] public BattleEventPayload[] Events { get; set; } = Array.Empty<BattleEventPayload>();
         [JsonPropertyName("your_hp")] public int YourHp { get; set; }
         [JsonPropertyName("opponent_hp")] public int OpponentHp { get; set; }
+        [JsonPropertyName("you_must_switch")] public bool YouMustSwitch { get; set; }
     }
 
     public class BattleEndPayload
     {
         [JsonPropertyName("battle_session_id")] public string BattleSessionId { get; set; } = "";
         [JsonPropertyName("winner_character_id")] public string WinnerCharacterId { get; set; } = "";
+        [JsonPropertyName("reason")] public string Reason { get; set; } = "";
         [JsonPropertyName("you_won")] public bool YouWon { get; set; }
+    }
+
+    // ---- Encuentros salvajes (ver server/internal/wildencounter) — servidor-autoritativo:
+    // el cliente nunca decide especie/nivel/captura, solo avisa que un encuentro nativo
+    // empezó y reacciona a lo que el servidor decide. ----
+
+    public class WildEncounterTriggeredPayload
+    {
+        [JsonPropertyName("map_id")] public string MapId { get; set; } = "";
+        // "land" (default si se omite) | "water" | "rock_smash" | "fishing" — ver
+        // server/internal/wildencounter.EncounterKind. RodTier solo aplica (y es obligatorio)
+        // si EncounterType == "fishing": "old_rod" | "good_rod" | "super_rod".
+        [JsonPropertyName("encounter_type")] public string EncounterType { get; set; } = "";
+        [JsonPropertyName("rod_tier")] public string RodTier { get; set; } = "";
+    }
+
+    public class WildPokemonPayload
+    {
+        [JsonPropertyName("species_id")] public int SpeciesId { get; set; }
+        [JsonPropertyName("level")] public int Level { get; set; }
+        [JsonPropertyName("current_hp")] public int CurrentHp { get; set; }
+        [JsonPropertyName("max_hp")] public int MaxHp { get; set; }
+    }
+
+    public class WildBattleStartPayload
+    {
+        [JsonPropertyName("session_id")] public string SessionId { get; set; } = "";
+        [JsonPropertyName("yours")] public BattlePokemonPayload Yours { get; set; } = new();
+        [JsonPropertyName("wild")] public WildPokemonPayload Wild { get; set; } = new();
+    }
+
+    public class WildSessionRefPayload
+    {
+        [JsonPropertyName("session_id")] public string SessionId { get; set; } = "";
+    }
+
+    public class WildActionPayload
+    {
+        [JsonPropertyName("session_id")] public string SessionId { get; set; } = "";
+        [JsonPropertyName("move_slot")] public int MoveSlot { get; set; }
+    }
+
+    public class WildThrowBallPayload
+    {
+        [JsonPropertyName("session_id")] public string SessionId { get; set; } = "";
+        [JsonPropertyName("item_id")] public int ItemId { get; set; }
+    }
+
+    public class WildEventPayload
+    {
+        [JsonPropertyName("type")] public string Type { get; set; } = "";
+        [JsonPropertyName("is_player")] public bool IsPlayer { get; set; }
+        [JsonPropertyName("move_id")] public int MoveId { get; set; }
+        [JsonPropertyName("damage")] public int Damage { get; set; }
+        [JsonPropertyName("effectiveness")] public double Effectiveness { get; set; }
+        [JsonPropertyName("fainted")] public bool Fainted { get; set; }
+        [JsonPropertyName("amount")] public int Amount { get; set; }
+    }
+
+    public class WildTurnResultPayload
+    {
+        [JsonPropertyName("session_id")] public string SessionId { get; set; } = "";
+        [JsonPropertyName("events")] public WildEventPayload[] Events { get; set; } = Array.Empty<WildEventPayload>();
+        [JsonPropertyName("your_hp")] public int YourHp { get; set; }
+        [JsonPropertyName("wild_hp")] public int WildHp { get; set; }
+    }
+
+    public class WildBattleEndPayload
+    {
+        [JsonPropertyName("session_id")] public string SessionId { get; set; } = "";
+        [JsonPropertyName("reason")] public string Reason { get; set; } = "";
+        [JsonPropertyName("exp_gained")] public int ExpGained { get; set; }
+        [JsonPropertyName("leveled_up")] public bool LeveledUp { get; set; }
+        [JsonPropertyName("new_level")] public int NewLevel { get; set; }
+        [JsonPropertyName("learned_move_ids")] public int[] LearnedMoveIds { get; set; } = Array.Empty<int>();
+        [JsonPropertyName("caught_pokemon")] public PokemonSummaryPayload? CaughtPokemon { get; set; }
+    }
+
+    // S->C: el Pokémon quiere aprender NewMoveId pero ya tiene 4 movimientos (CurrentMoveIds) —
+    // hay que preguntarle al jugador cuál reemplazar (o ninguno) y responder con
+    // LearnMoveDecisionPayload. Llega aparte de wild_battle_end, no lo bloquea.
+    public class WildMoveReplacePromptPayload
+    {
+        [JsonPropertyName("pokemon_id")] public string PokemonId { get; set; } = "";
+        [JsonPropertyName("new_move_id")] public int NewMoveId { get; set; }
+        [JsonPropertyName("current_move_ids")] public int[] CurrentMoveIds { get; set; } = Array.Empty<int>();
+    }
+
+    // C->S: respuesta a WildMoveReplacePromptPayload. ReplaceSlot: -1 = no aprender el
+    // movimiento nuevo, 0-3 = reemplazar ese slot.
+    public class LearnMoveDecisionPayload
+    {
+        [JsonPropertyName("pokemon_id")] public string PokemonId { get; set; } = "";
+        [JsonPropertyName("new_move_id")] public int NewMoveId { get; set; }
+        [JsonPropertyName("replace_slot")] public int ReplaceSlot { get; set; }
     }
 
     // ---- Amigos ----

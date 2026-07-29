@@ -1,20 +1,15 @@
 namespace ClientApp.Battle;
 
 /// <summary>
-/// Mapea un species ID (mismo número que server/internal/pokemon.SpeciesTreecko/etc. y
-/// RomLoader.StarterCatalog) al nombre de carpeta real dentro de graphics/pokemon/ del
-/// checkout local de pokeemerald-master — ese nombre no es derivable del ID sin la tabla
-/// completa de nombres de especie, así que se hardcodea, igual que ya se hace en
-/// server/internal/pokemon/starters.go para los mismos 3 iniciales.
+/// Mapea un species ID a su carpeta real dentro de graphics/pokemon/ del checkout local de
+/// pokeemerald-master, para cualquiera de las ~386 especies — sale de PokedexCatalog
+/// (data/pokemon/species.json), no de una tabla hardcodeada de los 3 iniciales como antes.
 /// </summary>
 internal static class SpriteCatalog
 {
-    private static readonly Dictionary<int, string> FolderBySpecies = new()
+    public static string? FolderFor(int species)
     {
-        [277] = "treecko",
-        [280] = "torchic",
-        [283] = "mudkip",
-    };
-
-    public static string? FolderFor(int species) => FolderBySpecies.TryGetValue(species, out var folder) ? folder : null;
+        var entry = PokedexCatalog.Species(species);
+        return entry != null && entry.SpriteFolder.Length > 0 ? entry.SpriteFolder : null;
+    }
 }

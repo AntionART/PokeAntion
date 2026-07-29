@@ -1,0 +1,267 @@
+<Window x:Class="Launcher.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Pokémon Online — Launcher"
+        Width="960" Height="600"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
+
+    <Border CornerRadius="12" Background="{StaticResource BgBrush}"
+            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="14">
+        <Border.Effect>
+            <DropShadowEffect Color="Black" BlurRadius="28" ShadowDepth="0" Opacity="0.55"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="34"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Barra de título propia (sin chrome de Windows): drag-to-move + botón cerrar -->
+            <Border Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="12,12,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Text="Pokémon Online" Foreground="{StaticResource MutedTextBrush}"
+                               FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                    <ComboBox ItemsSource="{Binding AvailableLanguages}" SelectedItem="{Binding SelectedLanguage}"
+                              Width="64" Height="24" FontSize="11" HorizontalAlignment="Right" Margin="0,0,46,0"
+                              Background="{StaticResource TitleBarBrush}" Foreground="{StaticResource MutedTextBrush}"
+                              BorderBrush="{StaticResource BorderBrush}"/>
+                    <Button Content="✕" Width="40" HorizontalAlignment="Right" Background="Transparent"
+                            Foreground="{StaticResource MutedTextBrush}" BorderThickness="0" Cursor="Hand"
+                            Click="CloseButton_Click">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Cuerpo -->
+            <Grid Grid.Row="1">
+
+                <!-- Pantalla principal: noticias/eventos + estado del servidor + botón Jugar -->
+                <Grid Margin="28,22,28,20" Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolToVis}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="POKÉMON ONLINE" Foreground="{StaticResource TextBrush}"
+                                   FontFamily="Segoe UI Semibold" FontSize="20" FontWeight="Bold"/>
+                        <!-- Brillo animado sutil bajo el título — "arte dinámico" liviano, sin
+                             assets/artwork con derechos (no fabricamos sprites/arte de Pokémon acá) -->
+                        <Border Height="2" Margin="0,8,0,0" HorizontalAlignment="Stretch">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop x:Name="GlowStop0" Color="#00E6392B" Offset="0"/>
+                                    <GradientStop Color="#E6392B" Offset="0.5"/>
+                                    <GradientStop x:Name="GlowStop1" Color="#00E6392B" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                            <ColorAnimation Storyboard.TargetName="GlowStop0" Storyboard.TargetProperty="Color"
+                                                            To="#33E6392B" Duration="0:0:2"/>
+                                            <ColorAnimation Storyboard.TargetName="GlowStop1" Storyboard.TargetProperty="Color"
+                                                            To="#33E6392B" Duration="0:0:2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Border.Triggers>
+                        </Border>
+                    </StackPanel>
+
+                    <Grid Grid.Row="1" Margin="0,18,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Noticias y eventos -->
+                        <DockPanel Grid.Column="0">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding Loc.NewsHeader}" Foreground="{StaticResource MutedTextBrush}"
+                                       FontSize="11" FontFamily="Segoe UI Semibold" Margin="0,0,0,8"/>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding NewsItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{StaticResource TrackBrush}" CornerRadius="8" Padding="14,10" Margin="0,0,0,10">
+                                                <StackPanel>
+                                                    <Grid>
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                                            <Border CornerRadius="4" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="{StaticResource SecondaryButtonBrush}"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding Type}" Value="event">
+                                                                                <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <TextBlock FontSize="9" Foreground="White" FontFamily="Segoe UI Semibold">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Text" Value="{Binding DataContext.Loc.NewsTag, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding Type}" Value="event">
+                                                                                    <Setter Property="Text" Value="{Binding DataContext.Loc.EventTag, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding Title}" Foreground="{StaticResource TextBrush}"
+                                                                       FontFamily="Segoe UI Semibold" FontSize="13" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding Date}" Foreground="{StaticResource MutedTextBrush}"
+                                                                   FontSize="10" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Body}" Foreground="{StaticResource MutedTextBrush}"
+                                                               FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+
+                        <!-- Estado del servidor -->
+                        <DockPanel Grid.Column="2">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding Loc.ServerStatusHeader}" Foreground="{StaticResource MutedTextBrush}"
+                                       FontSize="11" FontFamily="Segoe UI Semibold" Margin="0,0,0,8"/>
+                            <Border DockPanel.Dock="Top" Background="{StaticResource TrackBrush}" CornerRadius="8" Padding="14">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="9" Height="9" VerticalAlignment="Center">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Fill" Value="#4CAF50"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ServerOnline}" Value="False">
+                                                            <Setter Property="Fill" Value="#8C8F9B"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <TextBlock Text="{Binding PlayersOnlineText}" Foreground="{StaticResource TextBrush}"
+                                                   FontSize="12" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding PingText}" Foreground="{StaticResource MutedTextBrush}"
+                                               FontSize="11" Margin="17,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DockPanel>
+                    </Grid>
+
+                    <!-- Usuario recordado + botón Jugar -->
+                    <Grid Grid.Row="2" Margin="0,18,0,0">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource WatermarkTextBox}"
+                                         Width="180" Height="26" Padding="6,0"
+                                         Background="{StaticResource TrackBrush}" Foreground="{StaticResource TextBrush}"
+                                         BorderBrush="{StaticResource BorderBrush}" FontSize="12"
+                                         Tag="{Binding Loc.UsernamePlaceholder}"/>
+                                <CheckBox IsChecked="{Binding RememberUsername}" Content="{Binding Loc.RememberUsernameLabel}"
+                                          Foreground="{StaticResource MutedTextBrush}" FontSize="11"
+                                          VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding VersionText}" Foreground="{StaticResource MutedTextBrush}"
+                                       FontSize="10" Margin="0,6,0,0"/>
+                        </StackPanel>
+                        <Button Content="{Binding Loc.PlayButton}" Style="{StaticResource AccentButton}" Width="220" Height="52"
+                                FontSize="17" HorizontalAlignment="Right" Command="{Binding PlayCommand}"/>
+                    </Grid>
+                </Grid>
+
+                <!-- Pantalla de progreso: buscando update / descargando / iniciando -->
+                <StackPanel Margin="28,22,28,20" VerticalAlignment="Center"
+                            Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="POKÉMON ONLINE" Foreground="{StaticResource TextBrush}"
+                               FontFamily="Segoe UI Semibold" FontSize="18" FontWeight="Bold"/>
+
+                    <TextBlock Text="{Binding Status}" Foreground="{StaticResource MutedTextBrush}"
+                               FontSize="13" Margin="0,26,0,0"/>
+
+                    <ProgressBar Style="{StaticResource AccentProgressBar}" Margin="0,10,0,0"
+                                 Minimum="0" Maximum="100" Value="{Binding ProgressValue, Mode=OneWay}"
+                                 IsIndeterminate="{Binding IsIndeterminate}"/>
+
+                    <Grid Margin="0,6,0,0">
+                        <TextBlock Text="{Binding SpeedText}" Foreground="{StaticResource MutedTextBrush}"
+                                   FontSize="11" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding EtaText}" Foreground="{StaticResource MutedTextBrush}"
+                                   FontSize="11" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding PercentText}" Foreground="{StaticResource MutedTextBrush}"
+                                   FontSize="11" HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <TextBlock Text="{Binding VersionText}" Foreground="{StaticResource MutedTextBrush}"
+                               FontSize="10" Margin="0,18,0,0"/>
+                </StackPanel>
+
+                <!-- Panel de error: reemplaza el cuerpo entero, con Reintentar/Salir (nunca un
+                     MessageBox que tape la ventana, mismo criterio del launcher anterior) -->
+                <Border Background="{StaticResource BgBrush}" Margin="28,22,28,20"
+                        Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                            <Button Content="{Binding Loc.RetryButton}" Style="{StaticResource AccentButton}" Width="130"
+                                    Command="{Binding RetryCommand}" Margin="0,0,10,0"/>
+                            <Button Content="{Binding Loc.ExitButton}" Style="{StaticResource SecondaryButton}" Width="90"
+                                    Command="{Binding ExitCommand}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource TextBrush}"
+                                   FontSize="13" TextWrapping="Wrap" VerticalAlignment="Top"/>
+                    </DockPanel>
+                </Border>
+
+                <!-- Onboarding de ROM: nunca se ofrece descargar/enlazar nada, solo elegir un
+                     archivo que el usuario ya tiene en su equipo (ver RomLocatorService) -->
+                <Border Background="{StaticResource BgBrush}" Margin="28,22,28,20"
+                        Visibility="{Binding NeedsRom, Converter={StaticResource BoolToVis}}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding Loc.NeedsRomTitle}"
+                                   Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI Semibold" FontSize="15"/>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                            <Button Content="{Binding Loc.BrowseRomButton}" Style="{StaticResource AccentButton}" Width="150"
+                                    Command="{Binding BrowseRomCommand}" Margin="0,0,10,0"/>
+                            <Button Content="{Binding Loc.ExitButton}" Style="{StaticResource SecondaryButton}" Width="90"
+                                    Command="{Binding ExitCommand}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding RomMessage}" Foreground="{StaticResource MutedTextBrush}"
+                                   FontSize="12" TextWrapping="Wrap" VerticalAlignment="Top" Margin="0,10,0,0"/>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

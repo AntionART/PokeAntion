@@ -1,0 +1,14 @@
+[
+  {
+    "type": "news",
+    "title": "Bienvenido a Pokémon Online",
+    "body": "El servidor está en desarrollo activo. Reportá cualquier problema a un administrador.",
+    "date": "2026-07-28"
+  },
+  {
+    "type": "event",
+    "title": "Evento de prueba",
+    "body": "Este es un evento de ejemplo — editá data/news.json para publicar noticias/eventos reales.",
+    "date": "2026-07-28"
+  }
+]

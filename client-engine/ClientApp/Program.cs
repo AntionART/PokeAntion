@@ -35,8 +35,26 @@ bool devBoot = offline || mockData || args.Contains("--dev-boot");
 string serverHttp = GetOpt(args, "--server-http") ?? "http://localhost:8080";
 string serverWs = GetOpt(args, "--server-ws") ?? "ws://localhost:8080/ws";
 
-string repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+string repoRoot = FindRepoRoot(AppContext.BaseDirectory);
 string memoryMapsDir = GetOpt(args, "--memory-maps-dir") ?? Path.Combine(repoRoot, "memory-maps");
+
+// Busca la raíz del repo subiendo directorios desde donde corre el .exe, en vez de asumir una
+// profundidad fija (bin/Debug/net10.0-windows/) — esa cuenta fija se rompía apenas se agregaba
+// un RuntimeIdentifier o `dotnet publish` (carpetas win-x64/ o win-x64/publish/ de más), que es
+// justo lo que hace falta para empaquetar el cliente como self-contained (ver
+// client-engine/README.md sección de empaquetado). "memory-maps" + "data/pokemon" identifican
+// la raíz del repo sin ambigüedad (ningún otro proyecto los tiene). Si no se encuentran (ej.
+// alguien copió solo la carpeta de publish sin el resto del repo), cae al cálculo viejo de
+// profundidad fija como último recurso — mejor un intento razonable que reventar arrancando.
+static string FindRepoRoot(string startDir)
+{
+    for (var dir = new DirectoryInfo(startDir); dir != null; dir = dir.Parent)
+    {
+        if (Directory.Exists(Path.Combine(dir.FullName, "memory-maps")) && Directory.Exists(Path.Combine(dir.FullName, "data", "pokemon")))
+            return dir.FullName;
+    }
+    return Path.GetFullPath(Path.Combine(startDir, "..", "..", "..", "..", ".."));
+}
 
 // Sprites de batalla (Fase battle-3): en vez de descomprimir LZ77 y ubicar tablas de punteros
 // en el binario compilado, se reusan los PNG ya extraídos del checkout local de
@@ -44,6 +62,32 @@ string memoryMapsDir = GetOpt(args, "--memory-maps-dir") ?? Path.Combine(repoRoo
 // ClientApp.Battle.BattleSpriteAssets.
 string spritesDir = GetOpt(args, "--sprites-dir")
     ?? Path.Combine(repoRoot, "Pokemon Esmeralda", "pokeemerald-master", "pokeemerald-master", "graphics", "pokemon");
+
+// Catálogo completo de especies/movimientos (ver server/cmd/gendata) — mismo archivo que lee
+// el servidor, cargado una sola vez acá antes de que cualquier pantalla necesite un nombre de
+// especie/movimiento real (BattleScreen, y más adelante el selector de inicial).
+string pokedexDataDir = GetOpt(args, "--data-dir") ?? Path.Combine(repoRoot, "data", "pokemon");
+try
+{
+    ClientApp.Battle.PokedexCatalog.Load(pokedexDataDir);
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"No se pudo cargar el catálogo de especies/movimientos desde {pokedexDataDir}: {ex.Message}");
+}
+
+// MapCatalog: traduce (mapGroup, mapNum) crudos al ID real de mapa ("MAP_ROUTE101") que espera
+// el servidor (ver wildencounter.TryEncounter) — sin esto, cualquier mapa que no fuera el de
+// login se mandaba como "spawn#N", invisible para lógica server-side que necesita saber CUÁL
+// mapa es (ver efectiveMapId más abajo).
+try
+{
+    MapCatalog.Load(pokedexDataDir);
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"No se pudo cargar el catálogo de mapas desde {pokedexDataDir}: {ex.Message}");
+}
 
 // --dump-sprite <species> <front|back> <out.png>: decodifica un sprite y lo vuelca a un PNG
 // real (no BMP del backbuffer) SIN crear ventana/device D3D — verificación offline de
@@ -140,6 +184,7 @@ string currentMapId = "";
 string myColor = "default";
 SocialPanel? socialPanel = null;
 ClientApp.Battle.BattleScreen? battleScreen = null;
+ClientApp.Battle.MoveReplacePrompt? moveReplacePrompt = null;
 VoiceChat? voice = null;
 
 // Engancha el handler de gameplay y arma el panel social/voz apenas hay sesión autenticada
@@ -155,6 +200,7 @@ void WireUpSession()
     if (ws == null) return;
     socialPanel = new SocialPanel(ws, myCharacterId, () => remotePlayers, () => myColor);
     battleScreen = new ClientApp.Battle.BattleScreen(ws, myCharacterId, () => memAdapter?.GetParty(), spritesDir);
+    moveReplacePrompt = new ClientApp.Battle.MoveReplacePrompt(ws);
     ws.OnMessage += GameplayMessageHandler;
     voice = new VoiceChat(ws);
     Console.WriteLine(voice.CaptureAvailable
@@ -299,7 +345,23 @@ if (devBoot)
 }
 else
 {
-    var loginFlow = new LoginFlow(window, renderer, serverHttp, serverWs, catalog) { DumpPath = dumpPath, DumpAfterFrames = dumpAfterFrames };
+    // El Launcher (client-engine/Launcher) ya detecta/valida/elige la ROM antes de arrancar
+    // este .exe — "el cliente únicamente ejecuta el juego". Si vino con --rom/--memory-map/
+    // --rom-id ya resueltos, ese catálogo de UNA entrada reemplaza al descubierto localmente
+    // (LoginFlow salta la pantalla "Elegí tu ROM" cuando el catálogo tiene una sola entrada,
+    // ver LoginFlow.TrySubmitLogin). Sin esos argumentos (ej. corriendo ClientApp suelto en
+    // desarrollo) se sigue usando el catálogo multi-ROM descubierto arriba, sin cambios.
+    string? launcherRomPath = GetOpt(args, "--rom");
+    string? launcherMemoryMapPath = GetOpt(args, "--memory-map");
+    string? launcherRomId = GetOpt(args, "--rom-id");
+    if (launcherRomPath != null && launcherMemoryMapPath != null && launcherRomId != null)
+        catalog = [new RomCatalogEntry(launcherRomId, launcherRomId, launcherRomPath, launcherMemoryMapPath)];
+
+    // --username: "recordar usuario" del Launcher — solo precarga el campo (ver LoginFlow),
+    // nunca viaja ninguna contraseña por acá.
+    string? prefillUsername = GetOpt(args, "--username");
+
+    var loginFlow = new LoginFlow(window, renderer, WindowWidth, WindowHeight, serverHttp, serverWs, catalog, prefillUsername) { DumpPath = dumpPath, DumpAfterFrames = dumpAfterFrames };
     GameSession? session = loginFlow.Run();
     if (session == null)
     {
@@ -432,6 +494,7 @@ void GameplayMessageHandler(string type, JsonElement payload)
     socialPanel?.HandleMessage(type, payload);
     // Fase battle-4: batalla PvP — mismo criterio, ignora lo que no le interesa.
     battleScreen?.HandleMessage(type, payload);
+    moveReplacePrompt?.HandleMessage(type, payload);
 }
 
 
@@ -454,7 +517,7 @@ bool chatActive = false;
 
 if (core != null) core.InputState = (port, device, index, id) =>
 {
-    if (chatActive || (socialPanel != null && socialPanel.IsActive) || (battleScreen != null && battleScreen.IsActive)) return 0;
+    if (chatActive || (socialPanel != null && socialPanel.IsActive) || (battleScreen != null && battleScreen.IsActive) || (moveReplacePrompt != null && moveReplacePrompt.IsActive)) return 0;
     if (port != 0 || device != RetroDevice.Joypad) return 0;
     bool pressed = (JoypadButton)id switch
     {
@@ -475,10 +538,10 @@ if (core != null) core.InputState = (port, device, index, id) =>
 
 // F1 = volcar EWRAM (256KB crudos) + una captura, con timestamp, mientras se juega en vivo.
 // Herramienta de desarrollo para encontrar/validar direcciones de memoria (ver D.3 en el README).
-const int VK_F1 = 0x70, VK_F3 = 0x72, VK_F6 = 0x75, VK_F8 = 0x77;
+const int VK_F1 = 0x70, VK_F3 = 0x72, VK_F6 = 0x75, VK_F8 = 0x77, VK_F9 = 0x78;
 string dumpDir = Path.Combine(AppContext.BaseDirectory, "dumps");
 Directory.CreateDirectory(dumpDir);
-bool prevF1 = false, prevF3 = false, prevF6 = false, prevF8 = false, prevChatToggle = false;
+bool prevF1 = false, prevF3 = false, prevF6 = false, prevF8 = false, prevF9 = false, prevChatToggle = false, prevWildSignal = false;
 
 (string MapId, int X, int Y)? lastSentPos = null;
 DateTime lastMoveSentAt = DateTime.MinValue;
@@ -495,6 +558,20 @@ int debugBattleIndex = Array.IndexOf(args, "--debug-battle");
 (int Mine, int Opponent)? debugBattleSpecies = debugBattleIndex >= 0 && debugBattleIndex + 2 < args.Length
     ? (int.Parse(args[debugBattleIndex + 1]), int.Parse(args[debugBattleIndex + 2]))
     : null;
+
+// --debug-wild-battle <mySpecies> <wildSpecies>: igual que --debug-battle, pero inyecta
+// "wild_battle_start"/"wild_turn_result" — verifica el layout del modo salvaje (sin menú
+// Pokémon, Bag con Poké Ball en vez de objetos de curación) sin necesitar la señal de RAM real
+// (todavía no identificada, ver plan de encuentros salvajes) ni un encuentro real del servidor.
+int debugWildBattleIndex = Array.IndexOf(args, "--debug-wild-battle");
+(int Mine, int Wild)? debugWildBattleSpecies = debugWildBattleIndex >= 0 && debugWildBattleIndex + 2 < args.Length
+    ? (int.Parse(args[debugWildBattleIndex + 1]), int.Parse(args[debugWildBattleIndex + 2]))
+    : null;
+
+// --debug-move-replace: inyecta un "wild_move_replace_prompt" sintético directo en
+// MoveReplacePrompt — verifica el layout de esa pantalla sin necesitar que un Pokémon real
+// suba de nivel con el moveset ya lleno.
+bool debugMoveReplace = args.Contains("--debug-move-replace");
 
 Console.WriteLine("Ventana abierta. Cerrala para salir.");
 Console.WriteLine($"F1 = volcar EWRAM + captura | F3 = guardar estado -> {dumpDir}");
@@ -532,6 +609,34 @@ while (!window.ShouldClose)
         debugBattleSpecies = null;
     }
 
+    if (debugWildBattleSpecies != null && frame == 3 && battleScreen != null)
+    {
+        var fakeWildStart = new WildBattleStartPayload
+        {
+            SessionId = "debug-wild",
+            Yours = new BattlePokemonPayload { PokemonId = "debug-mine", SpeciesId = debugWildBattleSpecies.Value.Mine, Nickname = "MITUYO", Level = 5, CurrentHp = 20, MaxHp = 20 },
+            Wild = new WildPokemonPayload { SpeciesId = debugWildBattleSpecies.Value.Wild, Level = 3, CurrentHp = 12, MaxHp = 14 },
+        };
+        battleScreen.HandleMessage("wild_battle_start", JsonSerializer.SerializeToElement(fakeWildStart));
+        battleScreen.HandleMessage("wild_turn_result", JsonSerializer.SerializeToElement(new WildTurnResultPayload
+        {
+            SessionId = "debug-wild",
+            Events = [new WildEventPayload { Type = "damage", IsPlayer = true, MoveId = 10, Damage = 2, Effectiveness = 1.0 }],
+            YourHp = 20,
+            WildHp = 12,
+        }));
+        debugWildBattleSpecies = null;
+    }
+
+    if (debugMoveReplace && frame == 3 && moveReplacePrompt != null)
+    {
+        moveReplacePrompt.HandleMessage("wild_move_replace_prompt", JsonSerializer.SerializeToElement(new WildMoveReplacePromptPayload
+        {
+            PokemonId = "debug-pokemon", NewMoveId = 85 /* Trueno */, CurrentMoveIds = [10, 33, 45, 52],
+        }));
+        debugMoveReplace = false;
+    }
+
     PlayerPosition? localPos = null;
     if (memAdapter != null)
     {
@@ -556,9 +661,26 @@ while (!window.ShouldClose)
         }
         catch (Exception) { /* memory-map sin map_number_address para esta ROM, o EWRAM no lista aún: se reintenta el próximo frame */ }
     }
-    string effectiveMapId = (currentMapNumber is null || currentMapNumber == spawnMapNumber)
+    // GetMapGroupAndNum() + MapCatalog: cuando la ROM expone map_group_offset (ver
+    // GbaMemoryAdapter) Y ese (group, num) aparece en data/pokemon/maps.json, usamos el ID
+    // canónico real ("MAP_ROUTE101") en vez del esquema "spawn#N" de arriba — necesario para que
+    // wild_encounter_triggered (más abajo) y el propio "move" le den al servidor un mapId que
+    // wildencounter.TryEncounter realmente reconozca (busca por ese string exacto en
+    // data/pokemon/encounters.json). Si no resuelve (mapa interior/menor que gendata todavía no
+    // emite, o esta ROM no implementa GetMapGroupAndNum), cae al esquema viejo sin romper nada.
+    string? canonicalMapId = null;
+    if (memAdapter != null)
+    {
+        try
+        {
+            var groupNum = memAdapter.GetMapGroupAndNum();
+            if (groupNum is { } gn) canonicalMapId = MapCatalog.IdFor(gn.Group, gn.Num);
+        }
+        catch (Exception) { /* memory-map sin map_group_offset para esta ROM: se reintenta el próximo frame */ }
+    }
+    string effectiveMapId = canonicalMapId ?? (currentMapNumber is null || currentMapNumber == spawnMapNumber
         ? currentMapId
-        : $"{currentMapId}#{currentMapNumber}";
+        : $"{currentMapId}#{currentMapNumber}");
 
     // Fase G: sprites reales de jugadores remotos, no cuadrados de color (D.2b). Se reutiliza
     // el sprite del jugador LOCAL (el único que el propio emulador realmente dibuja) para
@@ -580,12 +702,18 @@ while (!window.ShouldClose)
     }
 
     bool battleActive = battleScreen != null && battleScreen.IsActive;
-    // BattleScreen toma control total de pantalla/input: si el panel social seguía abierto
-    // (ej. el propio retador, que nunca pasó por el "Enter: aceptar" que cierra el panel del
-    // otro lado, ver SocialPanel.Tab.Battle), se fuerza su cierre para que no queden dos
-    // superficies dibujándose/compitiendo por el teclado a la vez.
-    if (battleActive) socialPanel?.Close();
-    bool socialPanelActive = !battleActive && socialPanel != null && socialPanel.IsActive;
+    // MoveReplacePrompt solo empieza a mostrarse una vez que BattleScreen ya cerró (ver
+    // MoveReplacePrompt.Tick) — llega en cola porque el servidor manda wild_battle_end y este
+    // prompt casi pegados, mientras el jugador todavía puede estar mirando la pantalla de
+    // "¡Ganaste!".
+    if (!battleActive) moveReplacePrompt?.Tick();
+    bool moveReplacePromptActive = moveReplacePrompt != null && moveReplacePrompt.IsActive;
+    // BattleScreen/MoveReplacePrompt toman control total de pantalla/input: si el panel social
+    // seguía abierto (ej. el propio retador, que nunca pasó por el "Enter: aceptar" que cierra
+    // el panel del otro lado, ver SocialPanel.Tab.Battle), se fuerza su cierre para que no
+    // queden dos superficies dibujándose/compitiendo por el teclado a la vez.
+    if (battleActive || moveReplacePromptActive) socialPanel?.Close();
+    bool socialPanelActive = !battleActive && !moveReplacePromptActive && socialPanel != null && socialPanel.IsActive;
 
     // Fase F: abrir/cerrar el chat con F2 (como Minecraft/PokeMMO usan T, pero una tecla de
     // letra puede colarse como WM_CHAR en el propio mensaje — F2 nunca genera carácter).
@@ -593,7 +721,7 @@ while (!window.ShouldClose)
     // ya está abierto, ni durante una batalla, para no tener dos superficies de input
     // compitiendo por el teclado.
     bool chatToggleNow = window.IsKeyDown(VK_CHAT_TOGGLE);
-    if (chatToggleNow && !prevChatToggle && !chatActive && !socialPanelActive && !battleActive && ws != null)
+    if (chatToggleNow && !prevChatToggle && !chatActive && !socialPanelActive && !battleActive && !moveReplacePromptActive && ws != null)
     {
         chatActive = true;
         chatInput.Clear();
@@ -606,6 +734,10 @@ while (!window.ShouldClose)
     if (battleActive)
     {
         battleScreen!.HandleInput(window);
+    }
+    else if (moveReplacePromptActive)
+    {
+        moveReplacePrompt!.HandleInput(window);
     }
     else if (chatActive)
     {
@@ -653,13 +785,14 @@ while (!window.ShouldClose)
 
     // Fase F: voz por push-to-talk. Solo cuando ninguna superficie de texto está activa (si
     // no, la V se colaría en el mensaje) y solo si hay micrófono real detectado en este equipo.
-    voice?.SetTalking(!chatActive && !socialPanelActive && !battleActive && window.IsKeyDown(VK_V));
+    voice?.SetTalking(!chatActive && !socialPanelActive && !battleActive && !moveReplacePromptActive && window.IsKeyDown(VK_V));
 
     renderer.ClearText();
     DrawChatUi();
     DrawRemoteNameTags();
     socialPanel?.Draw(renderer, WindowWidth, WindowHeight);
     battleScreen?.Draw(renderer, WindowWidth, WindowHeight); // encima de todo: reemplaza la vista mientras dura la batalla
+    moveReplacePrompt?.Draw(renderer, WindowWidth, WindowHeight); // encima de todo lo demás, incluso de battleScreen (aunque nunca coinciden activos)
     renderer.Render(); // un solo Present por iteración: el turbo se siente como "avance rápido", no como parpadeo
 
     // Etiqueta con el nickname sobre cada sprite remoto, para diferenciarlos a simple vista
@@ -733,6 +866,34 @@ while (!window.ShouldClose)
         lastMoveSentAt = DateTime.UtcNow;
     }
 
+    // Fase RomLoader (señal de batalla salvaje nativa, ver memory-maps/*.json wild_battle_signal
+    // y GbaMemoryAdapter.IsCallback2AwayFromOverworld): gMain.callback2 se aleja del valor de
+    // overworld apenas el motor del juego real entra a una batalla — mismo mecanismo que ya usa
+    // --debug-wild-battle para simular, pero ahora disparado por la ROM misma, sin intervención
+    // manual. Edge-detected (mismo patrón que prevF1/prevChatToggle): un solo mensaje por
+    // transición, no uno por frame mientras la señal siga "activa". Gateado por !battleActive
+    // para no reenviar mientras BattleScreen ya está mostrando la pelea, ni justo después de que
+    // el servidor la cerró pero callback2 todavía no volvió a su valor de overworld ese mismo
+    // frame.
+    // LIMITACIÓN CONOCIDA (documentada en memory-maps/emerald_es.json _validation): esta señal
+    // distingue "batalla" de "overworld", pero no distingue QUÉ TIPO de encuentro fue (pasto,
+    // agua, roca) — se manda siempre como "land" hasta que exista una forma de detectar si el
+    // jugador estaba surfeando/con Rompecabezas en el momento del disparo. Tampoco está validado
+    // todavía que otras pantallas no-batalla (menú START, entrar a un edificio) no disparen esta
+    // misma señal por error — ver memory-maps/emerald_es.json antes de confiar en esto para
+    // encuentros de agua/roca en producción.
+    bool wildSignalNow = ws != null && !battleActive && memAdapter?.IsCallback2AwayFromOverworld() == true;
+    if (wildSignalNow && !prevWildSignal)
+    {
+        var wildTask = ws!.SendAsync("wild_encounter_triggered", new WildEncounterTriggeredPayload
+        {
+            MapId = effectiveMapId, EncounterType = "land",
+        });
+        wildTask.ContinueWith(t => Console.Error.WriteLine($"[ws] error enviando wild_encounter_triggered: {t.Exception?.GetBaseException().Message}"),
+            TaskContinuationOptions.OnlyOnFaulted);
+    }
+    prevWildSignal = wildSignalNow;
+
     bool f1Now = window.IsKeyDown(VK_F1);
     if (f1Now && !prevF1)
     {
@@ -762,6 +923,10 @@ while (!window.ShouldClose)
                 }
                 const int FLAG_SYS_CLOCK_SET = 0x860 + 0x35;
                 Console.WriteLine($"[diag] FLAG_SYS_CLOCK_SET = {memAdapter.GetFlag(FLAG_SYS_CLOCK_SET)}");
+                var mapGroupNum = memAdapter.GetMapGroupAndNum();
+                Console.WriteLine(mapGroupNum != null
+                    ? $"[diag] mapGroup={mapGroupNum.Value.Group} mapNum={mapGroupNum.Value.Num} (crudo, GetMapNumber()={memAdapter.GetMapNumber()})"
+                    : "[diag] mapGroup/mapNum = (memory-map sin map_group_offset)");
             }
             var ewram = core.FindEwram();
             if (ewram != null)
@@ -849,6 +1014,19 @@ while (!window.ShouldClose)
         Console.WriteLine("[diag] NewGameBootstrap.Apply() aplicado (money=999999, party[0]=Treecico nv5, flags de intro) + gPlayerParty[5] para verificación visual. Presioná F1 para chequear, o abrí el menú Pokémon.");
     }
     prevF8 = f8Now;
+
+    // F9 = diagnóstico temporal: saltar el gate de historia VAR_LITTLEROOT_TOWN_STATE==0 (la
+    // "Twin" empuja al jugador de vuelta si intenta entrar a Route 101 sin haber rescatado a
+    // Birch, ver LittlerootTown_EventScript_NeedPokemonTrigger*). Necesario para llegar al pasto
+    // alto desde un savestate --dev-boot (que da el inicial sin correr la intro real, dejando
+    // esta var en 0) sin tener que rejugar la intro completa de nuevo.
+    bool f9Now = window.IsKeyDown(VK_F9);
+    if (f9Now && !prevF9 && args.Contains("--patch-town-state") && memAdapter is RomLoader.GbaMemoryAdapter gbaAdapter)
+    {
+        gbaAdapter.SetGameVar(0x4050, 3);
+        Console.WriteLine("[diag] VAR_LITTLEROOT_TOWN_STATE parcheada a 3 (post-rescate Birch) — el paso norte a Route 101 ya no debería empujarte de vuelta.");
+    }
+    prevF9 = f9Now;
 
     if (dumpPath != null && frame == dumpAfterFrames)
     {

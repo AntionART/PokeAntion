@@ -109,6 +109,54 @@ type ChatMessagePayload struct {
 	Timestamp       string `json:"timestamp"`
 }
 
+// ---- Inventario (ver server/internal/inventory) ----
+
+type ItemStackPayload struct {
+	ItemID   int    `json:"item_id"`
+	Name     string `json:"name"`
+	Quantity int    `json:"quantity"`
+}
+
+// MyItemListPayload responde a "list_my_items" — usado para poblar el menú Bag de una batalla
+// (ver BattleItemPayload) con lo que el jugador realmente tiene, no una lista fija.
+type MyItemListPayload struct {
+	Items []ItemStackPayload `json:"items"`
+}
+
+// ---- Tienda (panel simple siempre accesible, ver server/internal/world Router.handleBuyItem)
+// ---- No hay NPC/edificio de Pokemart todavía — mismo criterio que el panel de amigos/grupo:
+// una superficie de UI propia, no algo atado a una posición en el mapa.
+
+// ShopItemPayload: un objeto comprable con su precio real (ver inventory.PurchasableItems).
+type ShopItemPayload struct {
+	ItemID int    `json:"item_id"`
+	Name   string `json:"name"`
+	Price  int    `json:"price"`
+}
+
+// ShopCatalogPayload responde a "shop_catalog_request".
+type ShopCatalogPayload struct {
+	Items []ShopItemPayload `json:"items"`
+}
+
+// BuyItemPayload es "buy_item": comprar quantity unidades de itemId al precio del catálogo
+// (el precio SIEMPRE se resuelve server-side contra inventory.Catalog, nunca se confía en un
+// precio mandado por el cliente).
+type BuyItemPayload struct {
+	ItemID   int `json:"item_id"`
+	Quantity int `json:"quantity"`
+}
+
+// BuyResultPayload responde a una compra exitosa — el cliente actualiza dinero/inventario
+// mostrados con esto en vez de tener que pedir un refresh aparte.
+type BuyResultPayload struct {
+	ItemID      int `json:"item_id"`
+	Quantity    int `json:"quantity"`
+	TotalCost   int `json:"total_cost"`
+	NewMoney    int `json:"new_money"`
+	NewQuantity int `json:"new_quantity"`
+}
+
 // ---- Pokémon (resumen para UI, no el detalle completo de combate) ----
 
 type PokemonSummaryPayload struct {
@@ -218,9 +266,40 @@ type BattleActionPayload struct {
 	MoveSlot        int    `json:"move_slot"` // índice 0-3 en los 4 movimientos del Pokémon activo
 }
 
+// BattleSwitchPayload cambia el Pokémon activo — TeamSlot es el índice 0-based dentro del
+// array que devolvió battle_team (ver BattleTeamPayload), no el team_slot de la tabla `pokemon`
+// directamente (aunque hoy coinciden, porque GetParty ya ordena por team_slot).
+type BattleSwitchPayload struct {
+	BattleSessionID string `json:"battle_session_id"`
+	TeamSlot        int    `json:"team_slot"`
+}
+
+// BattleItemPayload usa un objeto de curación (ver server/internal/inventory.Catalog) sobre
+// TeamSlot (índice 0-based dentro del array de battle_team) — cura si tiene vida, revive si
+// está debilitado, según lo que ese objeto haga; el servidor rechaza cualquier combinación que
+// no tenga sentido (curar un debilitado, revivir uno con vida) o que el jugador no tenga.
+type BattleItemPayload struct {
+	BattleSessionID string `json:"battle_session_id"`
+	ItemID          int    `json:"item_id"`
+	TeamSlot        int    `json:"team_slot"`
+}
+
+// BattleTeamRequestPayload pide el equipo completo propio dentro de una batalla (para el menú
+// "Pokémon" del cliente) — battle_start solo manda el Pokémon activo, no todo el equipo, para
+// no mandar de más si el jugador nunca abre ese menú.
+type BattleTeamRequestPayload struct {
+	BattleSessionID string `json:"battle_session_id"`
+}
+
+type BattleTeamPayload struct {
+	BattleSessionID string                 `json:"battle_session_id"`
+	Team            []BattlePokemonPayload `json:"team"`
+	ActiveIndex     int                    `json:"active_index"`
+}
+
 // BattleEventPayload es un paso del log de un turno (ver battlesession.TurnEvent) — Type es el
-// string del battle.EventType (damage|miss|faint|stat_change|no_pp), ActorCharacterID es quien
-// actuó (o quien recibió el stat_change/faint, ver battlesession.SubmitAction).
+// string del battle.EventType (damage|miss|faint|stat_change|no_pp|no_effect|switch|item_used),
+// ActorCharacterID es quien actuó (o quien recibió el stat_change/faint/switch/item_used).
 type BattleEventPayload struct {
 	Type             string  `json:"type"`
 	ActorCharacterID string  `json:"actor_character_id"`
@@ -228,21 +307,130 @@ type BattleEventPayload struct {
 	Damage           int     `json:"damage,omitempty"`
 	Effectiveness    float64 `json:"effectiveness,omitempty"`
 	Fainted          bool    `json:"fainted,omitempty"`
+	Amount           int     `json:"amount,omitempty"` // solo type=stat_change: +1/+2 sube, -1/-2 baja
+	// TargetSpecies/TargetNickname: a qué Pokémon afectó (type=switch: a quién se cambió;
+	// type=item_used: quién recibió el objeto). ItemID: solo type=item_used.
+	TargetSpecies  int    `json:"target_species,omitempty"`
+	TargetNickname string `json:"target_nickname,omitempty"`
+	ItemID         int    `json:"item_id,omitempty"`
 }
 
 // BattleTurnResultPayload se manda a AMBOS participantes con el mismo log de eventos (ya en
-// términos de character_id, no de índice de Fighter) y el HP de cada uno tras el turno.
+// términos de character_id, no de índice de Fighter) y el HP del Pokémon ACTIVO de cada uno
+// tras el intercambio. YouMustSwitch: tu Pokémon activo se debilitó y te queda equipo vivo —
+// el próximo mensaje que mandes en esta batalla tiene que ser battle_switch, no battle_action.
 type BattleTurnResultPayload struct {
 	BattleSessionID string               `json:"battle_session_id"`
 	Events          []BattleEventPayload `json:"events"`
 	YourHP          int                  `json:"your_hp"`
 	OpponentHP      int                  `json:"opponent_hp"`
+	YouMustSwitch   bool                 `json:"you_must_switch"`
 }
 
 type BattleEndPayload struct {
 	BattleSessionID   string `json:"battle_session_id"`
 	WinnerCharacterID string `json:"winner_character_id"`
 	YouWon            bool   `json:"you_won"`
+	// Reason: "victory" (el equipo rival se quedó sin Pokémon en pie) o "fled" (el otro lado
+	// usó battle_flee) — para que el cliente pueda mostrar "¡Ganaste!" vs "El rival huyó".
+	Reason string `json:"reason"`
+}
+
+// ---- Encuentros salvajes (ver server/internal/wildencounter) — 100% servidor-autoritativo:
+// el cliente NUNCA manda qué especie/nivel/IVs tiene el salvaje ni si la captura funcionó, solo
+// avisa que un encuentro nativo empezó y reacciona a lo que el servidor decide. ----
+
+// WildEncounterTriggeredPayload: el cliente detectó (por RAM, ver client-engine) que un
+// encuentro salvaje nativo arrancó, y avisa en qué mapa está — el servidor decide TODO lo
+// demás (si realmente toca encuentro, qué especie, qué nivel). EncounterType distingue de qué
+// superficie/acción viene ("land" default si viene vacío, "water", "rock_smash", "fishing" —
+// ver wildencounter.EncounterKind); RodTier solo aplica (y es obligatorio) si
+// EncounterType == "fishing" ("old_rod" | "good_rod" | "super_rod").
+type WildEncounterTriggeredPayload struct {
+	MapID         string `json:"map_id"`
+	EncounterType string `json:"encounter_type,omitempty"`
+	RodTier       string `json:"rod_tier,omitempty"`
+}
+
+// WildPokemonPayload es como BattlePokemonPayload pero para el lado salvaje — PokemonID vacío
+// porque todavía no existe una fila en `pokemon` (recién se crea si se atrapa).
+type WildPokemonPayload struct {
+	SpeciesID int `json:"species_id"`
+	Level     int `json:"level"`
+	CurrentHP int `json:"current_hp"`
+	MaxHP     int `json:"max_hp"`
+}
+
+type WildBattleStartPayload struct {
+	SessionID string               `json:"session_id"`
+	Yours     BattlePokemonPayload `json:"yours"`
+	Wild      WildPokemonPayload   `json:"wild"`
+}
+
+type WildSessionRefPayload struct {
+	SessionID string `json:"session_id"`
+}
+
+type WildActionPayload struct {
+	SessionID string `json:"session_id"`
+	MoveSlot  int    `json:"move_slot"`
+}
+
+type WildThrowBallPayload struct {
+	SessionID string `json:"session_id"`
+	ItemID    int    `json:"item_id"`
+}
+
+// WildEventPayload es como BattleEventPayload pero con IsPlayer en vez de un character_id (acá
+// solo hay un jugador real, no dos) — Type: damage|miss|faint|stat_change|no_pp|no_effect.
+type WildEventPayload struct {
+	Type          string  `json:"type"`
+	IsPlayer      bool    `json:"is_player"`
+	MoveID        int     `json:"move_id,omitempty"`
+	Damage        int     `json:"damage,omitempty"`
+	Effectiveness float64 `json:"effectiveness,omitempty"`
+	Fainted       bool    `json:"fainted,omitempty"`
+	Amount        int     `json:"amount,omitempty"`
+}
+
+type WildTurnResultPayload struct {
+	SessionID string             `json:"session_id"`
+	Events    []WildEventPayload `json:"events"`
+	YourHP    int                `json:"your_hp"`
+	WildHP    int                `json:"wild_hp"`
+}
+
+// WildBattleEndPayload: Reason es "wild_fainted" (con ExpGained/LeveledUp/NewLevel) |
+// "player_fainted" | "fled" | "caught" (con CaughtPokemon).
+type WildBattleEndPayload struct {
+	SessionID string `json:"session_id"`
+	Reason    string `json:"reason"`
+	ExpGained int    `json:"exp_gained,omitempty"`
+	LeveledUp bool   `json:"leveled_up,omitempty"`
+	NewLevel  int    `json:"new_level,omitempty"`
+	// LearnedMoveIds: movimientos aprendidos automáticamente al subir de nivel (había lugar
+	// libre). Si en cambio ya tenía 4 movimientos, ver wild_move_replace_prompt más abajo — se
+	// manda aparte, después de este mensaje.
+	LearnedMoveIds []int                  `json:"learned_move_ids,omitempty"`
+	CaughtPokemon  *PokemonSummaryPayload `json:"caught_pokemon,omitempty"`
+}
+
+// WildMoveReplacePromptPayload (S->C): el Pokémon quiere aprender NewMoveId pero ya tiene 4
+// movimientos (CurrentMoveIds) — el cliente debe preguntarle al jugador cuál reemplazar (o
+// ninguno) y responder con LearnMoveDecisionPayload. Se manda como mensaje aparte de
+// wild_battle_end (no bloquea el fin de la pelea, es una decisión de post-batalla).
+type WildMoveReplacePromptPayload struct {
+	PokemonID      string `json:"pokemon_id"`
+	NewMoveID      int    `json:"new_move_id"`
+	CurrentMoveIds [4]int `json:"current_move_ids"`
+}
+
+// LearnMoveDecisionPayload (C->S): respuesta del jugador a wild_move_replace_prompt.
+// ReplaceSlot: -1 = no aprender el movimiento nuevo, 0-3 = reemplazar ese slot.
+type LearnMoveDecisionPayload struct {
+	PokemonID   string `json:"pokemon_id"`
+	NewMoveID   int    `json:"new_move_id"`
+	ReplaceSlot int    `json:"replace_slot"`
 }
 
 // ---- Amigos ----

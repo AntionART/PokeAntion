@@ -10,6 +10,10 @@ import (
 // varios turnos hasta que uno caiga — confirma que el motor da resultados jugables (daño > 0,
 // alguien gana, sin panics) contra datos reales, no solo que compila.
 func TestSimulatedBattle(t *testing.T) {
+	if err := LoadMoveCatalog("../../../data/pokemon/moves.json"); err != nil {
+		t.Fatalf("cargando catálogo de movimientos: %v", err)
+	}
+
 	torchic := &Fighter{
 		Combatant: Combatant{Level: 5, Attack: 15, Defense: 9, SpAttack: 16, SpDefense: 10, Speed: 9, Type1: TypeFire, Type2: TypeFire},
 		CurrentHP: 19, MaxHP: 19, Moves: [4]int{MoveScratch, MoveGrowl, 0, 0}, PP: [4]int{35, 40, 0, 0},
