@@ -1,11 +1,30 @@
 # Cómo levantar este proyecto en cualquier máquina
 
 Esta guía sirve para retomar el proyecto desde cero en una computadora distinta (o la misma,
-después de reinstalar Windows) usando una copia de esta misma carpeta (disco externo, backup,
-lo que sea). Está pensada para vos, no para repartir a otra persona.
+después de reinstalar Windows). Está pensada para vos, no para repartir a otra persona (aunque
+el código en sí es público en GitHub — ver nota de ROMs/datos en el paso 8).
 
-**Lo más rápido**: corré `scripts\check-prerequisites.ps1` primero — te dice exactamente qué
-falta antes de perder tiempo con los pasos de abajo.
+Hay dos caminos según de dónde vengas:
+
+- **Partiendo de un `git clone`** (bajaste el repo de GitHub en una máquina nueva): el repo NO
+  trae los binarios portables de Go/Postgres ni tus datos reales (están en `.gitignore` a
+  propósito — ver `.gitignore` y la nota del paso 8). Corré esto y saltá directo al paso 6:
+
+  ```powershell
+  powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+  ```
+
+  Descarga Go y Postgres portables, crea la base vacía con el esquema (migraciones), y te deja
+  listo para arrancar el servidor. Vas a empezar sin tus cuentas/personajes viejos (base nueva)
+  — si tenés un dump SQL tuyo guardado aparte (no en el repo), restauralo con el paso 4.3 en vez
+  de dejar que `setup.ps1` cree la base vacía.
+
+- **Partiendo de una copia de carpeta** (disco externo, backup, robocopy): seguí los pasos 1-5
+  de abajo, que asumen que `go1.26.5\`, `postgresql-16.5\` y `postgres_data\` ya vinieron
+  copiados con el resto del proyecto.
+
+**Lo más rápido para saber qué falta**: corré `scripts\check-prerequisites.ps1` — te dice
+exactamente qué hay y qué no antes de perder tiempo con los pasos de abajo.
 
 ## 1. Requisitos de la máquina nueva
 
@@ -14,12 +33,16 @@ falta antes de perder tiempo con los pasos de abajo.
 - **.NET 10 SDK** — el único requisito que hay que instalar a mano. Descarga oficial:
   https://dotnet.microsoft.com/download (elegí "SDK", no "Runtime"). Sin esto podés levantar el
   servidor igual, pero no vas a poder compilar/abrir el Launcher ni el cliente.
-- **Go y Postgres NO hace falta instalarlos** — vienen incluidos y portables adentro del propio
-  proyecto (`go1.26.5\` y `postgresql-16.5\`). Se usan directo desde ahí.
+- **Go y Postgres NO hace falta instalarlos a mano** — son binarios portables que viven en
+  `go1.26.5\` y `postgresql-16.5\`. Si copiaste la carpeta completa, ya están ahí. Si venís de
+  un `git clone`, no están (no viajan por git) pero `scripts\setup.ps1` los descarga solo.
 - **Redis es opcional** — si no está, el servidor arranca igual y solo se desactiva el límite de
   mensajes de chat (falla "abierto", no bloquea nada). No hace falta instalarlo para uso normal.
 
 ## 2. Copiar el proyecto
+
+*(Este paso y los siguientes hasta el 5 son para el camino "copia de carpeta". Si veniste de
+`git clone` y ya corriste `setup.ps1`, saltealos y andá al paso 6.)*
 
 Copiá la carpeta completa a la máquina nueva (o al disco desde el que vas a trabajar). Si venís
 de un backup hecho con robocopy excluyendo `bin`/`obj`/`node_modules`, no pasa nada — se

@@ -1,7 +1,9 @@
 <#
 Chequea que la maquina donde corres esto tenga todo lo necesario para levantar el proyecto.
-Go y Postgres NO se chequean como "instalados en el sistema" -- vienen portables adentro del
-propio proyecto (go1.26.5/, postgresql-16.5/) y no requieren nada aparte.
+Go y Postgres NO se chequean como "instalados en el sistema" -- son portables y viven adentro
+del propio proyecto (go1.26.5/, postgresql-16.5/). Si veniste de un `git clone` y todavia no
+estan, no es un error de tu copia: no viajan por git (ver .gitignore) -- corre
+`scripts\setup.ps1` para descargarlos y armar la base de datos antes de re-chequear esto.
 
 Uso: desde la raiz del repo:
   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-prerequisites.ps1
@@ -33,7 +35,7 @@ $goExe = Join-Path $RepoRoot "go1.26.5\go\bin\go.exe"
 if (Test-Path $goExe) {
     Write-Output "[OK] Go portable encontrado en go1.26.5\go\bin\go.exe."
 } else {
-    Write-Output "[FALTA] No esta go1.26.5\go\bin\go.exe -- revisa que copiaste la carpeta completa del proyecto."
+    Write-Output "[FALTA] No esta go1.26.5\go\bin\go.exe -- si copiaste la carpeta completa, revisa que se haya copiado bien; si veniste de un git clone, corre scripts\setup.ps1 para descargarlo."
     $AllOk = $false
 }
 
@@ -42,7 +44,7 @@ $pgCtlExe = Join-Path $RepoRoot "postgresql-16.5\pgsql\bin\pg_ctl.exe"
 if (Test-Path $pgCtlExe) {
     Write-Output "[OK] Postgres portable encontrado en postgresql-16.5\pgsql\bin\."
 } else {
-    Write-Output "[FALTA] No esta postgresql-16.5\pgsql\bin\pg_ctl.exe -- revisa que copiaste la carpeta completa del proyecto."
+    Write-Output "[FALTA] No esta postgresql-16.5\pgsql\bin\pg_ctl.exe -- si copiaste la carpeta completa, revisa que se haya copiado bien; si veniste de un git clone, corre scripts\setup.ps1 para descargarlo."
     $AllOk = $false
 }
 
